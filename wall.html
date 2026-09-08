@@ -1,0 +1,146 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Viewport Wall</title>
+<link rel="stylesheet" href="wall.css"></head>
+<body>
+<header id="top">
+  <div class="brand">Viewport Wall</div>
+  <button id="back" title="Back (all)">←</button>
+  <button id="fwd" title="Forward (all)">→</button>
+  <button id="reload" title="Reload all (R)">↻</button>
+  <form id="urlform"><input id="url" type="text" list="recent" placeholder="https://example.com or localhost:3000" autocomplete="off" spellcheck="false"><datalist id="recent"></datalist></form>
+  <div class="group">
+    <span class="lbl">Sync</span>
+    <label class="tog"><input type="checkbox" id="syncNav" checked> Navigation</label>
+    <label class="tog"><input type="checkbox" id="syncScroll" checked> Scroll</label>
+    <label class="tog" title="Click the same element on every device (matched by id, data-testid, href, label, text)"><input type="checkbox" id="syncClicks"> Clicks</label>
+    <label class="tog" title="Mirror typed text into the matching field on every device"><input type="checkbox" id="syncInput"> Input</label>
+  </div>
+  <div class="group">
+    <button id="add" class="primary" title="Add device (A)">+ Device</button>
+    <select id="sets" title="Device set"></select>
+    <button id="saveSet" title="Save current devices as a set">Save set</button>
+    <select id="sessions" title="Saved sessions"></select>
+  </div>
+  <div class="group">
+    <select id="layout" title="Layout">
+      <option value="grid">Auto grid</option>
+      <option value="horizontal">Horizontal wall</option>
+      <option value="vertical">Vertical stack</option>
+      <option value="focus">Focus + comparisons</option>
+    </select>
+    <select id="zoom" title="Workspace zoom (+/-)">
+      <option value="fit">Fit</option>
+      <option value="0.25">25%</option><option value="0.33">33%</option><option value="0.5">50%</option>
+      <option value="0.67">67%</option><option value="0.75">75%</option><option value="1">100%</option>
+    </select>
+    <label class="tog"><input type="checkbox" id="frames"> Frames</label>
+    <button id="rotateAll" title="Rotate all (Shift+R)">Rotate all</button>
+  </div>
+  <div class="group">
+    <button id="detect" title="Detect CSS breakpoints used by the page">Breakpoints</button>
+    <button id="shotWall" title="Screenshot entire wall">Capture wall</button>
+    <button id="shotAll" title="Screenshot every device separately">Capture each</button>
+    <button id="report" title="Copy a Markdown responsive QA report">Report</button>
+    <select id="auto" title="Auto reload all"><option value="0">Auto reload: off</option><option value="5">every 5s</option><option value="15">every 15s</option><option value="60">every 60s</option></select>
+    <button id="fullscreen" title="Presentation mode (F)">Present</button>
+  </div>
+</header>
+<div id="warn" class="warn" hidden></div>
+<div id="bps" class="bps" hidden></div>
+<div id="issues" class="issues" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<div id="menu" class="menu" hidden>
+  <label>Panel zoom <select name="pzoom"><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.5">150%</option><option value="2">200%</option></select></label>
+  <label>Network <select name="net"><option value="none">No throttling</option><option value="fast4g">Fast 4G</option><option value="slow4g">Slow 4G</option><option value="3g">3G</option><option value="offline">Offline</option></select></label>
+  <label>CPU <select name="cpu"><option value="1">Normal</option><option value="2">2× slowdown</option><option value="4">4× slowdown</option><option value="6">6× slowdown</option></select></label>
+  <button name="cmp">Add to compare</button>
+  <button name="edit">Edit device…</button>
+</div>
+<div id="onboard" class="modal" hidden>
+  <div class="sheet small">
+    <h2>Your pages stay in your browser.</h2>
+    <p>Viewport Wall renders responsive previews locally using your Chrome session. It uses Chrome's debugging interface to open the page at different viewport sizes in a helper window. It does not upload your page content, cookies, form data or browsing history.</p>
+    <p>Chrome shows an "is debugging this browser" bar on the helper window while the wall is open. That is expected. Closing the wall tab closes the helper window.</p>
+    <p class="muted">This is responsive simulation, not real-device testing: rendering is Chrome's, not Safari's or Android WebView's.</p>
+    <div class="row"><button class="primary" data-act="ok">Got it</button></div>
+  </div>
+</div>
+<main id="wall"></main>
+<div id="empty" class="empty" hidden>
+  <h2>No devices selected</h2>
+  <p>Add your first device, or start from a set.</p>
+  <div class="row">
+    <button class="primary" data-act="pick">+ Add device</button>
+    <button data-set="essential-mobile">Essential Mobile</button>
+    <button data-set="mobile-tablet">Mobile + Tablet</button>
+    <button data-set="breakpoint-stress">All Breakpoints</button>
+  </div>
+</div>
+
+<div id="picker" class="modal" hidden>
+  <div class="sheet">
+    <div class="sheet-head">
+      <strong>Choose devices</strong>
+      <span id="pickCount" class="muted">0 selected</span>
+      <input id="search" type="search" placeholder="Search devices…">
+      <div class="filters" id="filters"></div>
+      <button class="x" data-act="close">×</button>
+    </div>
+    <div class="sheet-body">
+      <section>
+        <h3>Quick widths</h3>
+        <div class="chips" id="quickWidths"></div>
+      </section>
+      <div id="groups"></div>
+      <section>
+        <h3>Custom device</h3>
+        <form id="customForm" class="custom">
+          <input name="name" placeholder="Name" required>
+          <input name="width" type="number" min="100" max="4000" placeholder="Width" required>
+          <span>×</span>
+          <input name="height" type="number" min="100" max="4000" placeholder="Height" required>
+          <input name="dpr" type="number" min="1" max="4" step="0.05" value="2" placeholder="DPR">
+          <label><input name="mobile" type="checkbox" checked> Mobile</label>
+          <label><input name="touch" type="checkbox" checked> Touch</label>
+          <button type="submit">Save device</button>
+        </form>
+      </section>
+    </div>
+    <div class="sheet-foot">
+      <button data-act="clear">Clear</button>
+      <button class="primary" id="openPicked" data-act="open">Open 0 devices</button>
+    </div>
+  </div>
+</div>
+
+<template id="panelTpl">
+  <article class="panel">
+    <header class="phead">
+      <div class="meta">
+        <span class="name"></span>
+        <span class="dims"></span>
+        <span class="badge">ACTIVE</span>
+        <span class="ovf" hidden>⚠ overflow</span>
+      </div>
+      <div class="acts">
+        <button data-act="rotate" title="Rotate">⟳</button>
+        <button data-act="reloadOne" title="Reload this device">↻</button>
+        <button data-act="pause" title="Pause / resume">❚❚</button>
+        <button data-act="note" class="note" title="QA note">✎</button>
+        <button data-act="shot" title="Screenshot this device (Shift: full page)">⤓</button>
+        <button data-act="dup" title="Duplicate">⧉</button>
+        <button data-act="menu" title="More: zoom, network, CPU, compare, edit">⋯</button>
+        <button data-act="remove" title="Remove">×</button>
+      </div>
+    </header>
+    <div class="shell">
+      <div class="screen" tabindex="0">
+        <img draggable="false" alt="">
+        <div class="overlay"><div class="msg"></div><button data-act="retry">Retry</button></div>
+      </div>
+      <div class="grip" title="Drag to resize width"></div>
+    </div>
+  </article>
+</template>
+<script type="module" src="wall.js"></script>
+</body></html>
