@@ -2,112 +2,85 @@
 <html lang="en" data-theme="dark"><head><meta charset="utf-8"><title>Viewport Wall</title>
 <link rel="stylesheet" href="wall.css"></head>
 <body>
-<header id="top" class="toolbar">
-  <div class="tb-left">
-    <button class="icon-btn" id="sidebarToggle" data-tip="Toggle device sidebar"></button>
-    <div class="brand"><span class="logo"></span><span class="brand-name">Viewport Wall</span></div>
-    <div class="nav-group">
-      <button class="icon-btn" id="back" data-tip="Back on all devices"></button>
-      <button class="icon-btn" id="fwd" data-tip="Forward on all devices"></button>
-      <button class="icon-btn" id="reload" data-tip="Reload (Shift: ignore cache)"></button>
-    </div>
+<header id="top" class="bar bar-top">
+  <div class="brand">
+    <span class="logo"></span>
+    <span class="brand-text"><span class="brand-name">Viewport Wall</span><span class="brand-tag">See your website everywhere</span></span>
   </div>
-  <form id="urlform" class="tb-center">
-    <span class="url-ic"></span>
-    <input id="url" type="text" list="recent" placeholder="https://example.com or localhost:3000" autocomplete="off" spellcheck="false">
-    <datalist id="recent"></datalist>
-  </form>
-  <div class="tb-right">
-    <button class="btn" id="syncBtn" data-pop="syncPop" data-tip="Synchronization settings"><span class="dot on"></span>Sync</button>
-    <button class="btn" id="bpBtn" data-pop="bpPop" data-tip="Breakpoint widths"></button>
-    <button class="btn" id="captureBtn" data-pop="capturePop" data-tip="Capture screenshots"></button>
-    <button class="btn primary" id="add" data-tip="Add devices (A)"></button>
-    <button class="icon-btn" id="moreBtn" data-pop="morePop" data-tip="More"></button>
+  <div class="urlgroup">
+    <button class="icon-btn" id="back" data-tip="Back on all devices"></button>
+    <button class="icon-btn" id="fwd" data-tip="Forward on all devices"></button>
+    <button class="icon-btn" id="reload" data-tip="Reload all (Shift: ignore cache)"></button>
+    <form id="urlform" class="urlfield">
+      <span class="url-lock"></span>
+      <input id="url" type="text" list="recent" placeholder="https://example.com or localhost:3000" autocomplete="off" spellcheck="false">
+      <datalist id="recent"></datalist>
+      <span class="url-globe"></span>
+    </form>
   </div>
+  <div class="syncgroup" id="syncGroup">
+    <span class="sync-lbl">Sync:</span>
+    <label class="switch" data-tip="Navigation follows the active device"><input type="checkbox" data-sync="navigation"><i></i><span>Navigation</span></label>
+    <label class="switch" data-tip="Scroll position follows the active device"><input type="checkbox" data-sync="scroll"><i></i><span>Scroll</span></label>
+    <label class="switch" data-tip="Clicks are replayed on the same element everywhere"><input type="checkbox" data-sync="clicks"><i></i><span>Clicks</span></label>
+    <label class="switch" data-tip="Typed text is mirrored into the matching field"><input type="checkbox" data-sync="input"><i></i><span>Input</span></label>
+  </div>
+  <button class="btn primary lg" id="add" data-tip="Add devices (A)"></button>
+  <button class="btn lg icon-only" id="moreBtn" data-pop="morePop" data-tip="More"></button>
 </header>
 
-<div id="body">
-  <aside id="sidebar">
-    <div class="sb-section">
-      <div class="sb-title">Device sets</div>
-      <div id="setList" class="sb-list"></div>
-    </div>
-    <div class="sb-section grow">
-      <div class="sb-title">Current devices <span id="devCount" class="count"></span></div>
-      <div id="devList" class="sb-list"></div>
-    </div>
-    <div class="sb-actions">
-      <button class="btn block" id="sbAdd"></button>
-      <button class="btn block ghost" id="sbSave"></button>
-    </div>
-  </aside>
-
-  <main id="canvas" tabindex="-1">
-    <div id="wall"></div>
-    <div id="thumbs" class="thumbs" hidden></div>
-    <div id="empty" class="empty" hidden>
-      <div class="empty-art"><span></span><span></span><span></span></div>
-      <h2>Test your page everywhere at once</h2>
-      <p>Choose a device set or build your own wall.</p>
-      <div class="row">
-        <button class="btn primary" data-act="pick">Add devices</button>
-        <button class="btn" data-set="popular-mobile">Popular Mobile</button>
-        <button class="btn" data-set="mobile-tablet">Mobile + Tablet</button>
-        <button class="btn" data-set="essential-responsive">Breakpoints</button>
-      </div>
-    </div>
-    <div id="present-title" class="present-title" hidden></div>
-  </main>
+<div id="second" class="bar bar-second">
+  <div class="chips" id="setChips"></div>
+  <div class="tools">
+    <button class="btn dd" id="layoutBtn" data-pop="layoutPop" data-tip="Canvas layout"></button>
+    <button class="btn dd" id="zoomBtn" data-pop="zoomPop" data-tip="Zoom"></button>
+    <label class="switch big" data-tip="Realistic device frames"><input type="checkbox" id="framesToggle"><i></i><span>Frames</span></label>
+    <button class="btn" id="captureBtn" data-pop="capturePop" data-tip="Capture screenshots"></button>
+    <button class="btn" id="recordBtn" data-tip="Record the wall as a video"></button>
+  </div>
 </div>
 
-<footer id="status" class="statusbar">
-  <div class="st-left">
-    <span id="stDevices"></span>
-    <span class="sep"></span>
-    <span id="stActive" class="muted"></span>
+<main id="canvas" tabindex="-1">
+  <div id="wall"></div>
+  <div id="thumbs" class="thumbs" hidden></div>
+  <div id="empty" class="empty" hidden>
+    <div class="empty-art"><span></span><span></span><span></span></div>
+    <h2>See your website on every screen at once</h2>
+    <p>Pick a device set above, or build your own wall.</p>
+    <div class="row"><button class="btn primary lg" data-act="pick">Add devices</button><button class="btn lg" data-set="popular-mobile">Popular Mobile</button><button class="btn lg" data-set="mobile-tablet">Mobile + Tablet</button></div>
+  </div>
+  <div id="present-title" class="present-title" hidden></div>
+  <div id="issues" class="issues" hidden></div>
+</main>
+
+<footer id="status" class="bar bar-bottom">
+  <div class="fb-left">
+    <button class="btn" id="devicesBtn" data-pop="devicesPop" data-tip="Current devices"></button>
+    <button class="btn" id="clearBtn" data-tip="Remove all devices">Clear all</button>
+    <button class="btn" id="saveSetBtn" data-tip="Save current devices as a set">Save set</button>
+    <button class="btn icon-only" id="footMore" data-pop="footPop" data-tip="Breakpoints, sessions, theme"></button>
     <button class="btn sm warn-btn" id="issuesBtn" hidden data-tip="Show responsive issues"></button>
   </div>
-  <div class="st-center">
-    <div class="seg" id="frameSeg" data-key="frames" data-tip="Device frame style">
-      <button data-v="realistic">Realistic</button><button data-v="minimal">Minimal</button><button data-v="none">None</button>
-    </div>
-    <div class="seg" id="browserSeg" data-key="browser" data-tip="Simulated browser UI">
-      <button data-v="auto">Auto</button><button data-v="on">On</button><button data-v="off">Off</button>
-    </div>
-    <div class="seg" id="layoutSeg" data-key="type" data-tip="Canvas layout">
-      <button data-v="auto">Auto</button><button data-v="horizontal">Row</button><button data-v="grid">Grid</button><button data-v="free">Free</button>
-    </div>
+  <div class="modes" id="modes">
+    <button data-mode="live" data-tip="All devices update live"></button>
+    <button data-mode="snapshots" data-tip="Freeze every device; lighter on CPU"></button>
+    <button data-mode="focus" data-tip="One large device, others as thumbnails"></button>
+    <button data-mode="compare" data-tip="Two devices side by side"></button>
   </div>
-  <div class="st-right">
-    <div class="zoom">
-      <button class="icon-btn sm" id="zoomOut" data-tip="Zoom out (-)"></button>
-      <button class="zoom-val" id="zoomBtn" data-pop="zoomPop" data-tip="Zoom">Fit</button>
-      <button class="icon-btn sm" id="zoomIn" data-tip="Zoom in (+)"></button>
-    </div>
-    <span class="sep"></span>
-    <span id="perf" class="perf"><i></i>Performance: Good</span>
+  <div class="fb-right">
+    <span id="stActive" class="muted"></span>
+    <span id="perf" class="perf"><i></i>Performance: <b>Good</b></span>
   </div>
 </footer>
 
-<div id="issues" class="issues" hidden></div>
 <div id="toast" class="toast" hidden></div>
 
 <!-- popovers -->
-<div id="syncPop" class="pop" hidden>
-  <div class="pop-title">Synchronization</div>
-  <label class="row-toggle"><span>Navigation</span><input type="checkbox" data-sync="navigation"><i></i></label>
-  <label class="row-toggle"><span>Scroll</span><input type="checkbox" data-sync="scroll"><i></i></label>
-  <label class="row-toggle"><span>Clicks</span><input type="checkbox" data-sync="clicks"><i></i></label>
-  <label class="row-toggle"><span>Input</span><input type="checkbox" data-sync="input"><i></i></label>
-  <label class="row-toggle"><span>Reload</span><input type="checkbox" data-sync="reload"><i></i></label>
-  <div class="pop-hint">Actions on the active device propagate to the others.</div>
+<div id="layoutPop" class="pop menu" hidden>
+  <button data-layout="auto">Auto</button><button data-layout="horizontal">Row</button><button data-layout="grid">Grid</button><button data-layout="free">Free canvas</button>
 </div>
-<div id="bpPop" class="pop wide" hidden>
-  <div class="pop-title">Breakpoints</div>
-  <div class="pop-sub">Common</div><div class="chips" id="bpCommon"></div>
-  <div class="pop-sub">Detected in page <button class="link" id="bpDetect">Detect</button></div><div class="chips" id="bpDetected"><span class="muted">Click Detect to scan the active page's stylesheets.</span></div>
-  <div class="pop-sub">Boundary test</div><div class="chips" id="bpBoundary"><span class="muted">Detect first, then add w-1 / w / w+1 for every breakpoint.</span></div>
-  <div class="pop-foot"><button class="btn" id="bpAddBoundary" disabled>Add boundary set</button><button class="btn primary" id="bpAdd" disabled>Add to wall</button></div>
+<div id="zoomPop" class="pop menu" hidden>
+  <button data-zoom="fith">Fit height</button><button data-zoom="fit">Fit all</button><button data-zoom="0.25">25%</button><button data-zoom="0.33">33%</button><button data-zoom="0.5">50%</button><button data-zoom="0.75">75%</button><button data-zoom="1">100%</button>
 </div>
 <div id="capturePop" class="pop menu" hidden>
   <button data-cap="active">Active device</button>
@@ -117,31 +90,45 @@
   <button data-cap="present">Presentation image</button>
 </div>
 <div id="morePop" class="pop menu" hidden>
+  <div class="menu-row"><span>Frame style</span><div class="seg sm" id="frameSeg"><button data-v="realistic">Realistic</button><button data-v="minimal">Minimal</button></div></div>
+  <div class="menu-row"><span>Browser UI</span><div class="seg sm" id="browserSeg"><button data-v="auto">Auto</button><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+  <div class="menu-row"><span>Theme</span><div class="seg sm" id="themeSeg"><button data-v="dark">Dark</button><button data-v="light">Light</button></div></div>
+  <div class="menu-sep"></div>
   <button data-more="rotateAll">Rotate all devices</button>
   <button data-more="present">Presentation mode</button>
   <button data-more="report">Copy QA report</button>
   <div class="menu-sep"></div>
-  <label class="row-toggle" data-tip="Send an iPhone/Android user agent to mobile devices. Off by default: sites like LinkedIn or Google bind your session to the user agent and may log you out."><span>Mobile user agent</span><input type="checkbox" id="mobileUA"><i></i></label>
+  <label class="row-toggle" data-tip="Send an iPhone/Android user agent. Off by default: sites like LinkedIn bind sessions to the user agent and may log you out."><span>Mobile user agent</span><input type="checkbox" id="mobileUA"><i></i></label>
   <div class="menu-row"><span>Auto reload</span><select id="auto"><option value="0">Off</option><option value="5">5s</option><option value="15">15s</option><option value="60">60s</option></select></div>
-  <div class="menu-row"><span>Sessions</span><select id="sessions"></select></div>
-  <div class="menu-row"><span>Theme</span><div class="seg sm" id="themeSeg"><button data-v="dark">Dark</button><button data-v="light">Light</button></div></div>
   <div class="menu-sep"></div>
-  <button data-more="saveSession">Save session…</button>
-  <button data-more="clear">Clear wall</button>
   <button data-more="about">About &amp; privacy</button>
 </div>
-<div id="zoomPop" class="pop menu" hidden>
-  <button data-zoom="fith">Fit height</button><button data-zoom="fit">Fit all</button><button data-zoom="0.25">25%</button><button data-zoom="0.33">33%</button><button data-zoom="0.5">50%</button><button data-zoom="0.75">75%</button><button data-zoom="1">100%</button>
+<div id="footPop" class="pop menu" hidden>
+  <button data-foot="breakpoints">Breakpoints…</button>
+  <button data-foot="saveSession">Save session…</button>
+  <div class="menu-row"><span>Sessions</span><select id="sessions"></select></div>
 </div>
+<div id="devicesPop" class="pop wide" hidden>
+  <div class="pop-title">Current devices <span class="muted" id="devCount"></span></div>
+  <div id="devList" class="devlist-pop"></div>
+  <div class="pop-hint">Drag to reorder · click to activate</div>
+</div>
+<div id="bpPop" class="pop wide" hidden>
+  <div class="pop-title">Breakpoints</div>
+  <div class="pop-sub">Common</div><div class="chips2" id="bpCommon"></div>
+  <div class="pop-sub">Detected in page <button class="link" id="bpDetect">Detect</button></div><div class="chips2" id="bpDetected"><span class="muted">Click Detect to scan the active page's stylesheets.</span></div>
+  <div class="pop-sub">Boundary test</div><div class="chips2" id="bpBoundary"><span class="muted">Detect first, then add w-1 / w / w+1 for every breakpoint.</span></div>
+  <div class="pop-foot"><button class="btn" id="bpAddBoundary" disabled>Add boundary set</button><button class="btn primary" id="bpAdd" disabled>Add to wall</button></div>
+</div>
+<div id="setsPop" class="pop menu" hidden></div>
 <div id="devMenu" class="pop menu" hidden>
-  <button data-dm="rotate">Rotate device</button>
   <button data-dm="reload">Reload device</button>
   <button data-dm="pause">Pause rendering</button>
   <button data-dm="focus">Focus device</button>
   <div class="menu-sep"></div>
   <button data-dm="shot">Capture screenshot</button>
   <button data-dm="full">Capture full page</button>
-  <button data-dm="compare">Add to compare</button>
+  <button data-dm="compare">Compare with active</button>
   <div class="menu-sep"></div>
   <button data-dm="note">QA note…</button>
   <button data-dm="edit">Edit viewport…</button>
@@ -163,7 +150,7 @@
     </div>
     <div class="pal-filters" id="filters"></div>
     <div class="pal-body">
-      <section><div class="pal-sub">Quick widths</div><div class="chips" id="quickWidths"></div></section>
+      <section><div class="pal-sub">Quick widths</div><div class="chips2" id="quickWidths"></div></section>
       <div id="groups"></div>
       <section class="custom-sec">
         <div class="pal-sub">Custom device</div>
@@ -180,7 +167,7 @@
       </section>
     </div>
     <div class="pal-foot">
-      <span class="muted hint">Space or click toggles · Enter adds</span>
+      <span class="muted hint">Click toggles · Enter adds</span>
       <button class="btn ghost" data-act="clear">Clear</button>
       <button class="btn primary" id="openPicked" data-act="open">Add 0 devices</button>
     </div>
@@ -200,17 +187,19 @@
 <template id="panelTpl">
   <article class="panel">
     <div class="label">
+      <span class="os-ic"></span>
       <span class="name"></span>
-      <span class="meta"></span>
-      <span class="state"><i class="st-dot"></i><span class="st-text"></span></span>
-    </div>
-    <div class="hover-actions">
-      <button data-act="reload" data-tip="Reload device"></button>
+      <span class="grow"></span>
+      <span class="hover-acts">
+        <button data-act="reload" data-tip="Reload device"></button>
+        <button data-act="focus" data-tip="Focus device"></button>
+        <button data-act="shot" data-tip="Capture screenshot"></button>
+        <button data-act="menu" data-tip="More actions"></button>
+      </span>
       <button data-act="rotate" data-tip="Rotate device"></button>
-      <button data-act="focus" data-tip="Focus device"></button>
-      <button data-act="shot" data-tip="Capture screenshot"></button>
-      <button data-act="menu" data-tip="More actions"></button>
+      <button data-act="remove" data-tip="Remove device"></button>
     </div>
+    <div class="meta"><span class="dims"></span><span class="sep"></span><span class="dpr"></span><span class="sep"></span><span class="os"></span><span class="state"></span></div>
     <div class="device">
       <div class="shell">
         <div class="screen">

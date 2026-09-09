@@ -9,21 +9,41 @@ export function frameSpec(inst) {
   if (cat === 'breakpoint' || cat === 'custom' && !inst.mobile) return { ...base, family: 'minimal', radius: 14, bezel: 5, shell: 'minimal' };
   if (cat === 'laptop' || cat === 'desktop') return { ...base, family: 'desktop', radius: 10, bezel: 10, browser: 'desktop' };
   if (os === 'ios') {
-    if (/iphone-se/.test(id)) return { ...base, family: 'iphone-classic', radius: 40, bezel: 14, cutout: 'none', statusBar: 'ios-classic', browser: 'safari', navigation: 'home-button', topBezel: 60, bottomBezel: 60 };
-    return { ...base, family: 'iphone-modern', radius: 54, bezel: 12, cutout: 'dynamic-island', statusBar: 'ios', browser: 'safari', navigation: 'ios-home' };
+    if (/iphone-se/.test(id)) return { ...base, family: 'iphone-classic', radius: 40, bezel: 14, cutout: 'none', statusBar: 'ios-classic', browser: 'safari', navigation: 'ios-toolbar-classic', topBezel: 60, bottomBezel: 60 };
+    return { ...base, family: 'iphone-modern', radius: 54, bezel: 12, cutout: 'dynamic-island', statusBar: 'ios', browser: 'safari', navigation: 'ios-toolbar' };
   }
   if (os === 'ipados' || cat === 'tablet' && os === 'ios') return { ...base, family: 'ipad', radius: 26, bezel: 20, cutout: 'none', statusBar: 'ipad', browser: 'safari-tablet', navigation: 'ios-home' };
-  if (cat === 'tablet') return { ...base, family: 'android-tablet', radius: 22, bezel: 18, cutout: 'none', statusBar: 'android', browser: 'chrome', navigation: 'android-gesture' };
-  if (cat === 'foldable') return { ...base, family: 'android-fold', radius: 18, bezel: 8, cutout: 'punch', statusBar: 'android', browser: 'chrome', navigation: 'android-gesture' };
+  if (cat === 'tablet') return { ...base, family: 'android-tablet', radius: 22, bezel: 18, cutout: 'none', statusBar: 'android', browser: 'chrome', navigation: 'android-buttons' };
+  if (cat === 'foldable') return { ...base, family: 'android-fold', radius: 18, bezel: 8, cutout: 'punch', statusBar: 'android', browser: 'chrome', navigation: 'android-buttons' };
   if (inst.mobile) {
     const galaxy = /galaxy|samsung/.test(id + inst.brand.toLowerCase());
-    return { ...base, family: galaxy ? 'galaxy' : 'pixel', radius: galaxy ? 34 : 44, bezel: galaxy ? 7 : 9, cutout: 'punch', statusBar: 'android', browser: 'chrome', navigation: 'android-gesture', shell: galaxy ? 'graphite' : 'obsidian' };
+    return { ...base, family: galaxy ? 'galaxy' : 'pixel', radius: galaxy ? 34 : 44, bezel: galaxy ? 7 : 9, cutout: 'punch', statusBar: 'android', browser: 'chrome', navigation: 'android-buttons', shell: galaxy ? 'graphite' : 'obsidian' };
   }
   return base;
 }
 
 // Heights (CSS px, at 1:1 scale) of presentational bars. They sit OUTSIDE the emulated viewport.
-export const BAR = { ios: 54, 'ios-classic': 20, ipad: 24, android: 28, safari: 50, 'safari-tablet': 44, chrome: 52, desktop: 40, 'ios-home': 30, 'home-button': 0, 'android-gesture': 24 };
+export const BAR = { ios: 54, 'ios-classic': 20, ipad: 24, android: 28, safari: 50, 'safari-tablet': 44, chrome: 52, desktop: 40, 'ios-home': 30, 'home-button': 0, 'android-gesture': 24, 'ios-toolbar': 74, 'ios-toolbar-classic': 44, 'android-buttons': 46 };
+
+// Human OS label shown under the device name.
+export function osLabel(inst) {
+  const id = inst.presetId || '';
+  if (inst.os === 'ios') return /iphone-se|iphone-15|iphone-16/.test(id) ? 'iOS 18' : 'iOS 26';
+  if (inst.os === 'ipados') return 'iPadOS 26';
+  if (inst.os === 'android') return inst.category === 'tablet' ? 'Android 15' : 'Android 16';
+  if (inst.os === 'macos') return 'macOS';
+  return inst.category === 'breakpoint' ? 'Breakpoint' : inst.category === 'laptop' || inst.category === 'desktop' ? 'Desktop' : 'Custom';
+}
+export function osIcon(inst) {
+  const b = (inst.brand || '').toLowerCase();
+  if (inst.os === 'ios' || inst.os === 'ipados' || inst.os === 'macos') return 'apple';
+  if (b === 'google') return 'google';
+  if (b === 'samsung') return 'samsung';
+  if (inst.os === 'android') return 'android';
+  if (inst.category === 'breakpoint') return 'ruler';
+  if (inst.category === 'laptop' || inst.category === 'desktop') return 'monitor';
+  return 'phone';
+}
 
 export function effective(spec, mode, browserMode) {
   // mode: realistic | minimal | none. browserMode: auto | on | off.
@@ -69,6 +89,9 @@ function browserBar(kind, url) {
   return '';
 }
 function navBar(kind) {
+  if (kind === 'ios-toolbar') return `<div class="nb nb-safari" style="height:${BAR['ios-toolbar']}px"><div class="tools">${icon('back', 18)}${icon('forward', 18)}${icon('share', 18)}${icon('book', 18)}${icon('tabs', 18)}</div><i></i></div>`;
+  if (kind === 'ios-toolbar-classic') return `<div class="nb nb-safari classic" style="height:${BAR['ios-toolbar-classic']}px"><div class="tools">${icon('back', 18)}${icon('forward', 18)}${icon('share', 18)}${icon('book', 18)}${icon('tabs', 18)}</div></div>`;
+  if (kind === 'android-buttons') return `<div class="nb nb-android-btns" style="height:${BAR['android-buttons']}px">${icon('triangle', 16)}${icon('circle', 15)}${icon('square', 14)}</div>`;
   if (kind === 'ios-home') return `<div class="nb nb-ios" style="height:${BAR['ios-home']}px"><i></i></div>`;
   if (kind === 'android-gesture') return `<div class="nb nb-android" style="height:${BAR['android-gesture']}px"><i></i></div>`;
   return '';

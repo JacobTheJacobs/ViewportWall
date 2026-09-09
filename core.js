@@ -8,7 +8,8 @@ export const state = {
   devices: [],
   activeId: null,
   sync: { navigation: true, scroll: true, clicks: false, input: false, reload: true },
-  layout: { type: 'auto', zoom: 'fith', frames: 'realistic', browser: 'auto', theme: 'dark', sidebar: true, mobileUA: false },
+  layout: { type: 'auto', zoom: 'fith', frames: 'realistic', frameStyle: 'realistic', browser: 'auto', theme: 'dark', mobileUA: false },
+  frozen: false,
   windowId: null,
   autoReload: 0,
 };
@@ -294,6 +295,7 @@ async function capture(inst, force = false) {
 let tick = 0;
 setInterval(() => {
   tick++;
+  if (state.frozen) return;                       // Snapshots mode: no periodic captures
   for (const d of state.devices) {
     if (d.instanceId === state.activeId) capture(d, tick % 2 === 0);
     else if (d.dirty || tick % 10 === 0) capture(d, tick % 10 === 0);
@@ -416,6 +418,7 @@ function wireInput(inst, screen) {
     queue(() => send(inst.tabId, 'Input.dispatchMouseEvent', { type: 'mouseWheel', ...pos(e), deltaX: e.deltaX, deltaY: e.deltaY, modifiers: mods(e) }));
   }, { passive: false });
   screen.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { screen.blur(); return; }          // let the wall handle Escape (exit focus/present)
     if (inst.tabId == null || inst.paused) return;
     e.preventDefault(); e.stopPropagation();
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) { queue(() => send(inst.tabId, 'Input.insertText', { text: e.key }).then(() => state.sync.input && syncInput(inst))); return; }
@@ -471,6 +474,7 @@ export async function screenshotFullPage(inst) {
   download(`${slug(inst.name)}-${w}x${h}-full.png`, 'data:image/png;base64,' + r.data);
   inst.dirty = true;
 }
+export async function captureAllOnce() { for (const d of state.devices) { d.dirty = true; await capture(d, true); } }
 export async function screenshotAll(full = false) {
   for (const d of state.devices) if (d.tabId != null) { await (full ? screenshotFullPage(d) : screenshotDevice(d)); await new Promise(r => setTimeout(r, 300)); }
 }

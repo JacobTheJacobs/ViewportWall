@@ -22,7 +22,7 @@ Chrome shows an "is debugging this browser" bar on the helper window; that is ex
 
 ## UI
 
-Single compact toolbar (URL, Sync popover, Breakpoints, Capture, + Device, More), collapsible device sidebar (sets + current devices), Figma-like canvas with Auto / Row / Grid / Free layouts, fit-to-screen scaling, status bar with Frames (Realistic / Minimal / None) and Browser UI (Auto / On / Off) toggles, dark and light themes.
+Two-row header: brand, pill URL bar with back/forward/reload, inline Sync switches (Navigation, Scroll, Clicks, Input), Add Device, More. Second row: device-set chips (Essential, Mobile + Tablet, Breakpoints, Popular Mobile, Apple, Android, saved sets), layout and zoom dropdowns, Frames switch, Screenshot menu, Record (WebM of the wall). Footer: device list, Clear all, Save set, Live / Snapshots / Focus / Compare modes, performance. Inter font bundled locally; dark and light themes.
 
 Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, iOS status bar, Safari bar, home indicator), iPhone classic (bezels + home button), Pixel / Galaxy (punch-hole, Android status bar, Chrome bar, gesture bar), iPad, desktop browser window, and a minimal rounded frame for raw breakpoints. All bars sit outside the emulated viewport, so CSS media queries always see the exact device width.
 
