@@ -131,6 +131,9 @@ button{cursor:pointer}
 .hover-acts button{width:28px;height:28px}
 .meta{display:flex;align-items:center;gap:8px;height:22px;margin-bottom:10px;font-size:13px;color:var(--text-secondary);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
 .meta .sep{width:1px;height:14px;background:var(--border-strong)}
+.panel.narrow .meta .state span{display:none}
+.panel.narrow .meta .os{display:none}
+.panel.narrow .meta .sep:last-of-type{display:none}
 .meta .state{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)}
 .meta .state::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--text-muted)}
 .panel.ready .state::before{background:var(--success)}

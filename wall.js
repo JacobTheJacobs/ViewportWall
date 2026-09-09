@@ -82,8 +82,8 @@ function renderPanelState(d) {
   el.querySelector('.dims').textContent = `${w} × ${h}`;
   el.querySelector('.dpr').textContent = `DPR ${d.dpr}`;
   el.querySelector('.os').textContent = osLabel(d);
-  el.className = `panel ${d.status}${d.paused ? ' paused' : ''}${state.activeId === d.instanceId ? ' active' : ''}`;
-  el.querySelector('.state').textContent = d.paused ? 'Paused' : d.status === 'error' ? (d.errorTitle || 'Error') : d.status === 'loading' ? 'Loading' : state.activeId === d.instanceId ? 'Active' : (state.sync.scroll || state.sync.navigation) ? 'Synced' : 'Ready';
+  el.className = `panel ${d.status}${d.paused ? ' paused' : ''}${state.activeId === d.instanceId ? ' active' : ''}${el.classList.contains('narrow') ? ' narrow' : ''}`;
+  el.querySelector('.state').innerHTML = '<span></span>'; el.querySelector('.state span').textContent = d.paused ? 'Paused' : d.status === 'error' ? (d.errorTitle || 'Error') : d.status === 'loading' ? 'Loading' : state.activeId === d.instanceId ? 'Active' : (state.sync.scroll || state.sync.navigation) ? 'Synced' : 'Ready';
   if (d.status === 'error') { el.querySelector('.ov-title').textContent = d.errorTitle || "Couldn't load page"; el.querySelector('.ov-msg').textContent = d.errorKind === 'detached' ? d.errorMsg : `${hostOf(d.url || state.url)} ${d.errorMsg}`; }
   el.querySelector('.ov-text').textContent = `Loading ${hostOf(d.url || state.url)}…`;
   const badge = el.querySelector('.issue-badge'); const n = (d.issues || []).length;
@@ -120,7 +120,7 @@ function relayout() {
     const [ow, oh] = d.outer;
     const dev = el.querySelector('.device'); dev.style.width = Math.round(ow * s) + 'px'; dev.style.height = Math.round(oh * s) + 'px';
     el.querySelector('.shell').style.transform = `scale(${s})`;
-    el.style.width = Math.max(200, Math.round(ow * s)) + 'px';
+    el.style.width = Math.max(200, Math.round(ow * s)) + 'px'; el.classList.toggle('narrow', ow * s < 300);
     if (type === 'free' && !big) { if (d.fx == null) { d.fx = 40 + (list.indexOf(d) % 4) * 340; d.fy = 30 + Math.floor(list.indexOf(d) / 4) * 720; } el.style.left = d.fx + 'px'; el.style.top = d.fy + 'px'; } else { el.style.left = el.style.top = ''; }
   }
   $('#zoomBtn').innerHTML = `<span class="lbl">${zoom === 'fit' ? 'Fit all' : zoom === 'fith' ? 'Fit' : ''} ${Math.round(base * 100)}%</span>` + icon('chevron', 14, 'chev');
