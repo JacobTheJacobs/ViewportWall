@@ -181,6 +181,7 @@ async function createTab(inst) {
     await ensureGroup(tabId);
     await chrome.debugger.attach({ tabId }, '1.3'); inst.attached = true;
     await send(tabId, 'Page.enable');
+    await send(tabId, 'Page.setLifecycleEventsEnabled', { enabled: true }).catch(() => {});
     await send(tabId, 'Runtime.enable');
     await send(tabId, 'Runtime.addBinding', { name: '__vwReport' });
     await send(tabId, 'Page.addScriptToEvaluateOnNewDocument', { source: INJECT });
@@ -209,8 +210,13 @@ chrome.debugger.onEvent.addListener((src, method, params) => {
     if (params.frame.unreachableUrl) { inst.url = params.frame.unreachableUrl; if (inst.status !== 'error') setError(inst, 'Chrome could not load ' + params.frame.unreachableUrl, 'NAVIGATION_FAILED'); return; }
     if (url === 'about:blank' || !isWebUrl(url)) { if (!isWebUrl(url) && url !== 'about:blank' && inst.status !== 'error') setError(inst, 'Chrome could not load ' + (inst.url || state.url), 'NAVIGATION_FAILED'); return; }
     inst.url = url; inst.status = 'loading'; inst.errorKind = ''; ui.renderPanelState(inst); mark(inst);
+    // A fresh document paints white before it paints content. Keep showing the page the panel already has until the
+    // new one produces a frame with something in it (or the hold expires, in case the page really is blank).
+    if (inst.frame) { inst.awaitPaint = true; inst.holdUntil = Date.now() + 5000; }
     if (inst.throttled) { inst.throttled = false; refreshCast(inst); }
     if (isActive) onActiveNavigated(url);
+  } else if (method === 'Page.lifecycleEvent') {
+    if (params.name === 'firstMeaningfulPaint') inst.awaitPaint = false;
   } else if (method === 'Page.loadEventFired') {
     if (inst.status !== 'error') { inst.status = 'ready'; ui.renderPanelState(inst); }
     mark(inst); setTimeout(() => mark(inst), 400);
@@ -357,9 +363,16 @@ export async function refreshCast(inst) {
   try { await stopCast(inst); await startCast(inst); } finally { inst.casting = false; }
 }
 export function refreshCasts() { for (const d of state.devices) refreshCast(d); }
+// A JPEG of a blank page costs a fraction of a byte per pixel; anything with content on it costs far more.
+// That separates "the new document has not painted yet" from "the page really looks like this".
+const blankish = (inst, len) => { const [w, h] = dims(inst); const s = (inst.cast ? inst.cast.scale : capScaleFor(inst)); return len < 0.03 * w * h * s * s; };
 function onCastFrame(inst, params) {
   inst.painted = Date.now(); inst.castFrames = (inst.castFrames || 0) + 1; inst.fpsWin = (inst.fpsWin || 0) + 1;
   if (state.frozen || inst.paused || inst.status === 'error') return;
+  if (inst.awaitPaint) {
+    if (blankish(inst, params.data.length) && Date.now() < inst.holdUntil) return;   // still the blank new document: keep the old page
+    inst.awaitPaint = false;
+  }
   const had = !!inst.frame;
   inst.dirty = false; inst.lastData = params.data; inst.capScale = inst.cast ? inst.cast.scale : capScaleFor(inst);
   inst.frame = 'data:image/jpeg;base64,' + params.data;
@@ -369,6 +382,9 @@ function onCastFrame(inst, params) {
 // Frames are captured at the resolution they are displayed at (clip.scale), so a phone shown at 40% costs a
 // fraction of a full-size capture. Downloads (screenshotDevice) always use the full device resolution.
 const capScaleFor = inst => Math.min(1, Math.max(0.2, +((inst.scale || 1) * (window.devicePixelRatio || 1) * 1.08).toFixed(2)));
+// captureScreenshot's clip.scale multiplies the emulated device pixel ratio, the screencast's maxWidth does not.
+// Dividing by the DPR makes a fallback capture exactly the size of a stream frame, so swapping between the two is invisible.
+const shotScaleFor = inst => Math.max(0.05, +(capScaleFor(inst) / (inst.dpr || 1)).toFixed(3));
 // Active device up to 2.5 fps, others up to ~0.8 fps, at most 2 captures in flight: animated pages stay affordable
 // (see README performance table) while static walls cost only the heartbeat.
 const ACTIVE_MIN = 400, ACTIVE_MAX = 1500, OTHER_MIN = 1200, OTHER_MAX = 4000, MAX_INFLIGHT = 2;
@@ -381,7 +397,7 @@ async function probe(inst) {
   if (inst.tabId == null || inst.frame) return;
   try {
     const [w, h] = dims(inst); const vv = await viewportOf(inst);
-    const r = await Promise.race([send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: vv.x, y: vv.y, width: w, height: h, scale: capScaleFor(inst) } }), sleep(800)]);
+    const r = await Promise.race([send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: vv.x, y: vv.y, width: w, height: h, scale: shotScaleFor(inst) } }), sleep(800)]);
     if (r && r.data && !inst.frame) { inst.lastData = r.data; inst.frame = 'data:image/jpeg;base64,' + r.data; inst.capScale = capScaleFor(inst); ui.frameUpdated(inst); if (inst.status === 'loading') { inst.status = 'ready'; ui.renderPanelState(inst); } }
   } catch {}
 }
@@ -393,12 +409,14 @@ async function capture(inst, force = false) {
   const watchdog = setTimeout(() => { if (inst.capturing && !inst.frame) nudge(inst); }, 1200);   // first paint stalled → wake the tab
   const reset = setTimeout(() => { if (inst.capturing) { inst.capturing = false; inflight--; inst.dirty = true; } }, 8000);
   try {
-    const [w, h] = dims(inst); const scale = capScaleFor(inst);
+    const [w, h] = dims(inst); const scale = capScaleFor(inst);   // display scale, for the backoff comparison
+
     // clip is in document coordinates: offset it by the visual viewport's page position or a scrolled page captures the
     // (unpainted) area above the viewport and comes back white or half-drawn.
     const vv = await viewportOf(inst);
-    const r = await send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: vv.x, y: vv.y, width: w, height: h, scale } });
+    const r = await send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: vv.x, y: vv.y, width: w, height: h, scale: shotScaleFor(inst) } });
     inst.capScale = scale; inst.lastCaptureMs = Date.now() - started;
+    if (inst.awaitPaint && blankish(inst, r.data.length) && Date.now() < inst.holdUntil) return;   // same hold for fallback captures
     const changed = r.data !== inst.lastData;
     // Adaptive cadence: animating content is polled quickly, still content backs off exponentially.
     const active = inst.instanceId === state.activeId;
@@ -433,7 +451,7 @@ setInterval(() => {
     }
     const quiet = now - (d.painted || 0);
     if (!d.frame && !d.capturing) due.push([0, d]);
-    else if (d.dirty && quiet > 700 && now >= (d.nextAt || 0)) due.push([1, d]);
+    else if (d.dirty && quiet > 1200 && now >= (d.nextAt || 0)) due.push([1, d]);
   }
   due.sort((a, b) => a[0] - b[0]);
   for (const [, d] of due) { if (inflight >= MAX_INFLIGHT) break; capture(d, true); }

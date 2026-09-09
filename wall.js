@@ -106,10 +106,25 @@ function unmountFrame(d) { const el = panels.get(d.instanceId); if (!el) return;
 function setFrameUrl(d, url, force) { const f = panels.get(d.instanceId)?.querySelector('.viewport iframe'); if (!f) return mountFrame(d, url); if (force || f.src !== url) f.src = url; }
 // Clicking inside an iframe never reaches the wall, but it moves focus into the frame: use that to activate the device.
 window.addEventListener('blur', () => setTimeout(() => { const a = document.activeElement; if (a && a.tagName === 'IFRAME' && a.name && inst(a.name) && state.activeId !== a.name) C.setActive(a.name); }, 0));
+// Frames are decoded off-screen and only then swapped in, so a panel never shows a half-decoded or empty image.
+// While one frame decodes, newer frames replace the pending one instead of queueing: the panel always shows the latest.
 function frameUpdated(d) {
-  const img = panels.get(d.instanceId)?.querySelector('img'); if (!img) return;
-  img.decoding = 'async'; img.src = d.frame; panels.get(d.instanceId).classList.add('has-frame');
-  if (focusIds.length) { const t = $(`#thumbs [data-id="${d.instanceId}"] img`); if (t) t.src = d.frame; }
+  const el = panels.get(d.instanceId); const img = el?.querySelector('img'); if (!img) return;
+  d.pendingFrame = d.frame;
+  if (d.decoding) return;
+  d.decoding = true;
+  const paint = () => {
+    const src = d.pendingFrame; d.pendingFrame = null;
+    if (!src) { d.decoding = false; return; }
+    const probe = new Image(); probe.src = src;
+    const show = () => {
+      img.src = src; el.classList.add('has-frame');
+      if (focusIds.length) { const t = $(`#thumbs [data-id="${d.instanceId}"] img`); if (t) t.src = src; }
+      paint();
+    };
+    probe.decode().then(show, show);
+  };
+  paint();
 }
 function setActiveUI(id) {
   for (const [iid, el] of panels) el.classList.toggle('active', iid === id);
