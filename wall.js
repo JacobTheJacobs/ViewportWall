@@ -83,9 +83,10 @@ function renderPanelState(d) {
   el.querySelector('.name').textContent = d.name;
   el.querySelector('.dims').textContent = `${w} × ${h}`;
   el.querySelector('.dpr').textContent = `DPR ${d.dpr}`;
-  el.querySelector('.os').textContent = osLabel(d);
+  el.querySelector('.os').textContent = osLabel(d) + (d.render === 'iframe' ? ' · Interactive' : '');
   el.className = `panel ${d.status}${d.paused ? ' paused' : ''}${state.activeId === d.instanceId ? ' active' : ''}${el.classList.contains('narrow') ? ' narrow' : ''}`;
   el.querySelector('.state').innerHTML = '<span></span>'; el.querySelector('.state span').textContent = d.paused ? 'Paused' : d.status === 'error' ? (d.errorTitle || 'Error') : d.status === 'loading' ? 'Loading' : state.activeId === d.instanceId ? 'Active' : 'Synced';
+  el.classList.toggle('iframe-mode', d.render === 'iframe');
   if (d.status === 'error') { el.querySelector('.ov-title').textContent = d.errorTitle || "Couldn't load page"; el.querySelector('.ov-msg').textContent = d.errorKind === 'detached' ? d.errorMsg : `${hostOf(d.url || state.url)} ${d.errorMsg}`; }
   el.querySelector('.ov-text').textContent = `Loading ${hostOf(d.url || state.url)}…`;
   const badge = el.querySelector('.issue-badge'); const n = (d.issues || []).length;
@@ -94,6 +95,17 @@ function renderPanelState(d) {
   updateHost(el, d.url || state.url);
   if (d.orientation !== el.dataset.or) { el.dataset.or = d.orientation; buildFrame(d); relayout(); }
 }
+// iframe devices: a real <iframe name=instanceId> replaces the captured image inside the viewport.
+function mountFrame(d, url) {
+  const el = panels.get(d.instanceId); if (!el) return; const vp = el.querySelector('.viewport');
+  let f = vp.querySelector('iframe');
+  if (!f) { f = document.createElement('iframe'); f.name = d.instanceId; f.className = 'live'; f.setAttribute('allow', 'autoplay; fullscreen; clipboard-read; clipboard-write'); f.addEventListener('load', () => C.frameLoaded(d)); vp.appendChild(f); }
+  if (f.src !== url) f.src = url;
+}
+function unmountFrame(d) { const el = panels.get(d.instanceId); if (!el) return; el.querySelector('.viewport iframe')?.remove(); }
+function setFrameUrl(d, url, force) { const f = panels.get(d.instanceId)?.querySelector('.viewport iframe'); if (!f) return mountFrame(d, url); if (force || f.src !== url) f.src = url; }
+// Clicking inside an iframe never reaches the wall, but it moves focus into the frame: use that to activate the device.
+window.addEventListener('blur', () => setTimeout(() => { const a = document.activeElement; if (a && a.tagName === 'IFRAME' && a.name && inst(a.name) && state.activeId !== a.name) C.setActive(a.name); }, 0));
 function frameUpdated(d) {
   const img = panels.get(d.instanceId)?.querySelector('img'); if (!img) return;
   img.decoding = 'async'; img.src = d.frame;
@@ -254,13 +266,14 @@ function renderViewBtn(base) {
 $('#framesToggle').addEventListener('change', e => { state.layout.frames = e.target.checked ? (state.layout.frameStyle || 'realistic') : 'none'; C.savePrefs(); rebuildAll(); });
 $('#frameSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.frameStyle = v; if (state.layout.frames !== 'none') state.layout.frames = v; setSeg('frameSeg', v); C.savePrefs(); rebuildAll(); });
 $('#browserSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.browser = v; setSeg('browserSeg', v); C.savePrefs(); rebuildAll(); });
+$('#renderSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v || v === state.layout.render) return; setSeg('renderSeg', v); C.setRenderMode(v); toast(v === 'iframe' ? 'Interactive iframes: real-time, but no DPR / touch / user-agent emulation and only on sites that allow framing' : v === 'cdp' ? 'Full device emulation for every device' : 'Auto: iframes for local dev servers, emulated tabs elsewhere'); });
 $('#themeSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.theme = v; applyTheme(); C.savePrefs(); });
 function applyTheme() { document.documentElement.dataset.theme = state.layout.theme || 'dark'; setSeg('themeSeg', state.layout.theme || 'dark'); }
 
 // capture / record
 $('#capturePop').addEventListener('click', async e => {
   const k = e.target.closest('[data-cap]')?.dataset.cap; if (!k) return; hidePops();
-  if (k === 'active') { const a = activeInst(); if (a) C.screenshotDevice(a); }
+  if (k === 'active') { const a = activeInst(); if (a) a.render === 'iframe' ? toast('Screenshots need Full emulation (Settings → Rendering)') : C.screenshotDevice(a); }
   else if (k === 'all') C.screenshotAll(false); else if (k === 'full') C.screenshotAll(true);
   else if (k === 'wall') screenshotWall(false); else if (k === 'present') screenshotWall(true);
 });
@@ -334,7 +347,7 @@ function openDevMenu(d, anchor) {
 $('#devMenu').addEventListener('click', e => {
   const k = e.target.closest('[data-dm]')?.dataset.dm; if (!k || !menuDev) return; const d = menuDev; hidePops();
   if (k === 'reload') C.reloadOne(d); else if (k === 'rotate') C.rotate(d); else if (k === 'pause') C.togglePause(d);
-  else if (k === 'focus') setMode('focus', d.instanceId); else if (k === 'shot') C.screenshotDevice(d); else if (k === 'full') C.screenshotFullPage(d);
+  else if (k === 'focus') setMode('focus', d.instanceId); else if (k === 'shot' || k === 'full') { d.render === 'iframe' ? toast('Screenshots need Full emulation (Settings → Rendering)') : k === 'shot' ? C.screenshotDevice(d) : C.screenshotFullPage(d); }
   else if (k === 'compare') { const a = state.activeId && state.activeId !== d.instanceId ? state.activeId : state.devices.map(x => x.instanceId).find(x => x !== d.instanceId); compareSel = new Set([a, d.instanceId].filter(Boolean)); setMode('compare', a); }
   else if (k === 'note') { const v = prompt(`QA note for ${d.name}`, d.note || ''); if (v != null) { d.note = v.trim(); renderPanelState(d); renderIssues(); C.savePrefs(); } }
   else if (k === 'edit') { const v = prompt('Name, width, height, DPR', `${d.name}, ${d.baseW}, ${d.baseH}, ${d.dpr}`); if (v) { const [n, w, h, dpr] = v.split(',').map(x => x.trim()); if (n) d.name = n; d.presetId = null; C.setViewport(d, +w || 0, +h || 0, +dpr || 0); buildFrame(d); renderPanelState(d); relayout(); renderDeviceList(); C.savePrefs(); } }
@@ -392,7 +405,7 @@ function renderStatus() {
 }
 function syncUIFromState() {
   $('#framesToggle').checked = state.layout.frames !== 'none'; setSeg('frameSeg', state.layout.frameStyle || 'realistic'); setSeg('browserSeg', state.layout.browser); applyTheme(); renderViewBtn();
-  $('#mobileUA').checked = !!state.layout.mobileUA; $('#url').value = state.url;
+  $('#mobileUA').checked = !!state.layout.mobileUA; setSeg('renderSeg', state.layout.render || 'auto'); $('#url').value = state.url;
   rebuildAll(); renderSets(); renderDeviceList(); renderStatus();
 }
 
@@ -524,13 +537,15 @@ document.addEventListener('keydown', e => {
 
 // ---------- hooks & boot ----------
 Object.assign(ui, {
-  mount, unmount, renderPanelState, relayout, frameUpdated, renderIssues, toast,
+  mount, unmount, renderPanelState, relayout, frameUpdated, renderIssues, toast, mountFrame, unmountFrame, setFrameUrl,
   setUrl: u => { $('#url').value = u; for (const d of state.devices) updateHost(panels.get(d.instanceId), d.url || u); },
   countChanged: () => { renderDeviceList(); renderStatus(); renderSets(); renderThumbs(); },
   renderRecent: list => { $('#recent').innerHTML = (list || []).map(u => `<option value="${esc(u)}">`).join(''); },
   setActive: setActiveUI,
 });
 chrome.runtime.onMessage.addListener(msg => { if (msg && msg.type === 'navigate' && msg.url && msg.url !== state.url) { C.navigateAll(msg.url); toast('Opened ' + hostOf(msg.url)); } });
+// Debug/automation hooks (used by the benchmark and test harness).
+window.__vwUi = ui; window.__vwAdd = ids => C.addDevices(ids.map(C.findPreset).filter(Boolean)); window.__vwNav = u => C.navigateAll(u);
 async function boot() {
   const prefs = await C.loadPrefs();
   const q = new URLSearchParams(location.search);
@@ -539,6 +554,7 @@ async function boot() {
   state.url = C.normalizeUrl(q.get('url')) || recent[0] || 'http://localhost:3000';
   ui.renderRecent(recent); renderSessions(); syncUIFromState(); setMode('live');
   if (!prefs.onboarded) $('#onboard').hidden = false;
+  if (q.get('render')) state.layout.render = q.get('render');
   if (q.get('set')) await C.applySet(q.get('set'));
   else if (q.get('pick')) openPicker();
   else if (prefs.lastDevices?.length) await C.addDevices(prefs.lastDevices);

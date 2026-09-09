@@ -9,10 +9,17 @@ Chrome extension: see one website on many viewports at once, with synchronized n
 
 ## How it works
 
-- Each device is a real Chrome tab in the wall's own window (a collapsed "Viewport Wall" tab group), controlled with the `chrome.debugger` API (DevTools Protocol). No extra windows are opened.
+- Two rendering modes, chosen per device (Settings → Rendering):
+  - **Full emulation** (default for every remote site): a real Chrome tab in the wall's own window (collapsed "Viewport Wall" tab group), controlled with the `chrome.debugger` API. No extra windows are opened.
+  - **Interactive** (Auto picks it for `localhost` / `127.0.0.1` / `*.localhost` when the server sends no `X-Frame-Options` or restrictive `frame-ancestors`): the page runs in a live `<iframe>` inside the wall. Real-time and directly interactive, no capture pipeline, but only width/height emulation (no DPR, touch or user-agent) and no screenshots. The wall's host permission for localhost lets the agent script run inside these frames for scroll/navigation sync and issue checks, and gives them access to the site's normal cookies (Chrome's storage-partitioning exemption for extension pages with host permission). Sites that block framing fall back to Full emulation automatically.
   `Emulation.setDeviceMetricsOverride` applies width/height/DPR/mobile/touch/user-agent, so CSS media queries see the real emulated viewport.
   This works on sites that block iframes (`X-Frame-Options`, `frame-ancestors`) and on localhost/staging with your existing cookies.
-- The wall shows live captures (`Page.captureScreenshot`) taken at the resolution they are displayed at, so a phone shown at 40% costs a fraction of a full capture. Polling is adaptive: a device whose pixels change is re-captured quickly (active 0.4s, others 0.8s); still content backs off to 1.5s / 4s. Unchanged frames are dropped, so nothing flickers.
+- Full-emulation devices show captures (`Page.captureScreenshot`, JPEG, clipped to the visual viewport in document coordinates) taken at the resolution they are displayed at, so a phone shown at 40% costs a fraction of a full capture. How "changed pixels" are detected (`core.js`, `capture()` and the tick loop):
+  1. A 16-pixel `Page.startScreencast` runs on every tab. Each `screencastFrame` event is a compositor-level "something painted" signal that marks the device dirty. It also keeps hidden tabs painting.
+  2. The in-page agent (`agent.js`) reports scroll, navigation and DOM mutations, which also mark the device dirty.
+  3. Dirty devices are captured (at most 3 in flight); every capture's base64 is compared with the previous one and an identical frame is dropped before it touches the DOM, so nothing flickers and nothing decodes.
+  4. Devices that keep returning identical pixels back off exponentially (active device 0.4s → 1.5s, others 0.8s → 4s), which is the idle heartbeat.
+  So a capture is still a poll, but its cadence is driven by paint and DOM signals, and only genuinely different frames are sent to the wall.
 - Click a panel to make it active. Mouse, wheel, and keyboard on the active panel are forwarded via `Input.*`.
 - Navigation sync propagates full loads and SPA route changes (pushState/replaceState/popstate/hashchange).
 - Scroll sync uses percentage position (`scrollTop / (scrollHeight - viewportHeight)`).
@@ -40,6 +47,21 @@ Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, i
 - Panel menu (⋯): per-device zoom (also Ctrl+wheel), network profile (Fast 4G / Slow 4G / 3G / Offline), CPU slowdown, add to compare (two devices → side-by-side image), edit device.
 - Checks also flag overlapping interactive elements (nav/header/buttons/links/headings/images).
 
+## Performance (measured)
+
+Headless Chromium 151 on a 24-core Linux box, `bench2.py` in the test harness. CPU is the sum over all Chrome processes (100% = one core); RSS is the whole browser including the wall page. "Static" is a plain page, "animated" is a worst case that rewrites text at 60 fps in every device.
+
+| Devices | Mode | Idle CPU static / animated | Scrolling CPU static / animated | RSS static / animated | Frames sent, animated | All devices ready after navigation |
+|---|---|---|---|---|---|---|
+| 1 | Full emulation | 3% / 36% | 12% / 40% | 1.08 / 1.25 GB | 3.0 fps | 0.3 s |
+| 4 | Full emulation | 7% / 130% | 40% / 140% | 1.54 / 2.08 GB | 7.1 fps total | 0.3 s |
+| 8 | Full emulation | 9% / 191% | 45% / 193% | 2.09 / 2.68 GB | 12.5 fps total | 0.3 s |
+| 12 | Full emulation | 9% / 237% | 54% / 239% | 2.61 / 3.22 GB | 11.1 fps total | 0.3 s |
+| 4 | Interactive (iframe) | 0% / 20% | 14% / 24% | 1.11 / 1.14 GB | native | 0.3 s |
+| 12 | Interactive (iframe) | 1% / 30% | 21% / 35% | 1.16 / 1.21 GB | native | 0.3 s |
+
+What this says: a static wall is cheap in either mode (the heartbeat costs about 1.5 captures per second for the whole wall, and identical frames are dropped before decoding). Each emulated tab costs roughly 130 MB and, on a page that animates continuously, about 30% of a core for the renderer plus captures, so an animated 12-device wall is heavy; the Snapshots pause in Settings or Interactive mode for local work brings it down. Real sites (YouTube watch page, react.dev, nextjs.org, github.com, threejs.org, MDN, Wikipedia) render and scroll in sync on four devices in the `sites.py` check.
+
 ## Shortcuts
 
 `A` add device · `R` reload all · `Shift+R` rotate all · `F` presentation · `1–9` activate device · `+/-` zoom · `Esc` exit · double-click a panel to focus it.
@@ -49,7 +71,8 @@ Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, i
 ```
 manifest.json   MV3 manifest (debugger, tabs, storage, activeTab)
 background.js   opens the wall from the toolbar icon; closes the device tab group when the wall tab closes
-core.js         target manager, CDP emulation, capture loop, sync, screenshots, sessions (no DOM)
+agent.js        in-page agent: scroll/navigation reports, responsive checks (CDP-injected or content script)
+core.js         target manager, rendering modes, CDP emulation, capture loop, sync, screenshots, sessions (no DOM)
 wall.js         UI: toolbars, menus, canvas layout, picker, focus/compare/presentation
 wall.html/css   structure + design tokens (dark/light)
 frames.js       data-driven device shells, status bars, browser bars, cutouts

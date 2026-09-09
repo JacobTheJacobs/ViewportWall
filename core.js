@@ -8,7 +8,7 @@ export const state = {
   devices: [],
   activeId: null,
   sync: { navigation: true, scroll: true, clicks: true, input: true, reload: true },   // always on; the wall is one page on many screens
-  layout: { type: 'auto', zoom: 'fith', frames: 'realistic', frameStyle: 'realistic', browser: 'auto', theme: 'dark', mobileUA: false },
+  layout: { type: 'auto', zoom: 'fith', frames: 'realistic', frameStyle: 'realistic', browser: 'auto', theme: 'dark', mobileUA: false, render: 'auto' },   // render: auto | iframe | cdp
   frozen: false,
   groupId: null,
   autoReload: 0,
@@ -23,62 +23,13 @@ window.__vwState = state;
 // Hooks the UI layer fills in.
 export const ui = {
   renderPanelState() {}, relayout() {}, mount() {}, unmount() {}, setUrl() {}, renderIssues() {},
-  countChanged() {}, toast() {}, renderRecent() {}, frameUpdated() {}, setActive() {},
+  countChanged() {}, toast() {}, renderRecent() {}, frameUpdated() {}, setActive() {}, mountFrame() {}, unmountFrame() {}, setFrameUrl() {},
 };
 
-const INJECT = `(function(){
-  if (window.__vwInstalled) return; window.__vwInstalled = true;
-  const report = (type, data) => { try { __vwReport(JSON.stringify(Object.assign({type}, data))); } catch (e) {} };
-  let t; addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(() => {
-    const de = document.documentElement; const max = de.scrollHeight - innerHeight;
-    report('scroll', { ratio: max > 0 ? scrollY / max : 0 });
-  }, 60); }, { passive: true });
-  const wrap = k => { const o = history[k]; history[k] = function() { const r = o.apply(this, arguments); report('nav', { url: location.href }); return r; }; };
-  wrap('pushState'); wrap('replaceState');
-  addEventListener('popstate', () => report('nav', { url: location.href }));
-  addEventListener('hashchange', () => report('nav', { url: location.href }));
-  const check = () => {
-    const de = document.documentElement; const issues = [];
-    if (de.scrollWidth > de.clientWidth) issues.push({ kind: 'overflow', msg: 'Horizontal overflow: ' + de.scrollWidth + 'px content in ' + de.clientWidth + 'px viewport' });
-    const label = el => { const t = (el.innerText || el.getAttribute('aria-label') || el.alt || '').trim().replace(/\s+/g, ' ').slice(0, 28); const id = el.id && el.id.length < 24 && !/\d{4,}/.test(el.id) ? '#' + el.id : ''; return (id || el.tagName.toLowerCase()) + (t ? ' "' + t + (t.length === 28 ? '…' : '') + '"' : ''); };
-    let n = 0;
-    for (const el of document.querySelectorAll('button,a,h1,h2,h3,label,[role=button],input[type=submit]')) {
-      if (n > 5) break;
-      const cs = getComputedStyle(el);
-      if (el.scrollWidth > el.clientWidth + 1 && (cs.overflow !== 'visible' || cs.whiteSpace === 'nowrap')) { issues.push({ kind: 'clip', msg: 'Text clipped: ' + label(el) }); n++; }
-    }
-    n = 0;
-    const all = document.querySelectorAll('body *'); const lim = Math.min(all.length, 2500);
-    for (let i = 0; i < lim; i++) { const el = all[i];
-      if (n > 5) break;
-      const cs = getComputedStyle(el); if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
-      const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
-      if (r.right > innerWidth + 1 || r.left < -1) { issues.push({ kind: 'fixed', msg: 'Fixed element exceeds viewport: ' + label(el) }); n++; }
-    }
-    const cands = [...document.querySelectorAll('nav,header,button,a,h1,h2,img,[role=button],input')].filter(e => { const cs = getComputedStyle(e); const r = e.getBoundingClientRect(); return cs.visibility !== 'hidden' && cs.opacity !== '0' && r.width > 8 && r.height > 8 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight && cs.clip === 'auto' && cs.clipPath === 'none'; }).slice(0, 80);
-    const rects = cands.map(e => [e, e.getBoundingClientRect()]);
-    let found = 0;
-    for (let i = 0; i < rects.length && found < 3; i++) for (let j = i + 1; j < rects.length && found < 3; j++) {
-      const [a, ra] = rects[i], [b, rb] = rects[j];
-      if (a.contains(b) || b.contains(a)) continue;
-      const ix = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), iy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
-      if (ix > 8 && iy > 8 && ix * iy > 0.3 * Math.min(ra.width * ra.height, rb.width * rb.height)) { issues.push({ kind: 'overlap', msg: 'Elements overlap: ' + label(a) + ' and ' + label(b) }); found++; }
-    }
-    for (const img of document.images) { const r = img.getBoundingClientRect(); if (r.width && r.right > innerWidth + 1) { issues.push({ kind: 'image', msg: 'Image exceeds viewport: ' + (img.alt || img.src.split('/').pop().slice(0, 30)) }); break; } }
-    report('check', { issues });
-  };
-  let c, last = 0; const run = () => { last = Date.now(); try { check(); } catch (e) {} };
-  const sched = () => { clearTimeout(c); const wait = Math.max(300, 1500 - (Date.now() - last)); c = setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(run, { timeout: 1000 }) : run()), wait); };
-  addEventListener('load', sched); addEventListener('resize', sched); document.readyState === 'complete' && sched();
-  new MutationObserver(sched).observe(document.documentElement, { childList: true, subtree: true, attributes: false });
-})();`;
+// The in-page agent lives in agent.js so the same code serves CDP tabs and iframe devices.
+const INJECT = await fetch(chrome.runtime.getURL('agent.js')).then(r => r.text());
 
-// Runs inside a target: collect min/max-width media query breakpoints from same-origin stylesheets + inline styles.
-const DETECT_BP = `(()=>{const out=new Set();const re=/\\((?:min|max)-width\\s*:\\s*([\\d.]+)(px|em|rem)\\)/g;
-  const walk=r=>{for(const x of r){if(x.media){let m;const t=x.media.mediaText;while((m=re.exec(t)))out.add(m[2]==='px'?+m[1]:Math.round(+m[1]*16));}
-    if(x.cssRules){try{walk(x.cssRules)}catch(e){}}}};
-  for(const sh of document.styleSheets){try{walk(sh.cssRules)}catch(e){}}
-  return [...out].filter(n=>n>=200&&n<=3000).sort((a,b)=>a-b)})()`;
+
 
 
 // ---------- persistence ----------
@@ -117,7 +68,7 @@ function makeInstance(preset) {
     mobile: !!preset.mobile, touch: !!preset.touch,
     orientation: preset.orientation || 'portrait',
     zoom: preset.zoom || 1, net: preset.net || 'none', cpu: preset.cpu || 1, note: preset.note || '',
-    tabId: null, status: 'loading', error: '', errorKind: '', url: '', frame: '', paused: false, capturing: false, dirty: true, issues: [],
+    tabId: null, frameId: null, render: 'cdp', status: 'loading', error: '', errorKind: '', url: '', frame: '', paused: false, capturing: false, dirty: true, issues: [],
   };
 }
 export const dims = i => i.orientation === 'portrait' ? [i.baseW, i.baseH] : [i.baseH, i.baseW];
@@ -177,27 +128,70 @@ export function setError(inst, msg, kind) {
   ui.renderPanelState(inst);
 }
 
+// ---------- rendering mode ----------
+// Fast mode embeds the page in an iframe: real-time and directly interactive, but only width/height emulation (no DPR,
+// touch or user agent) and only where the site allows framing. Auto uses it for local dev servers that send no
+// X-Frame-Options / frame-ancestors; everything else gets a real emulated tab through CDP.
+export const isLocalUrl = u => { try { const h = new URL(u).hostname; return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '0.0.0.0' || h.endsWith('.localhost'); } catch { return false; } };
+const frameCache = new Map();
+export async function canFrame(url) {
+  let origin; try { origin = new URL(url).origin; } catch { return false; }
+  const c = frameCache.get(origin); if (c && Date.now() - c.at < 60000) return c.ok;
+  let ok = false;
+  try {
+    const r = await fetch(url, { cache: 'no-store', credentials: 'include', redirect: 'follow' });
+    const xfo = (r.headers.get('x-frame-options') || '').toLowerCase();
+    const csp = (r.headers.get('content-security-policy') || '').toLowerCase();
+    const fa = /frame-ancestors([^;]*)/.exec(csp);
+    ok = !xfo && (!fa || /\*|chrome-extension:/.test(fa[1]));
+  } catch { ok = false; }
+  frameCache.set(origin, { ok, at: Date.now() }); return ok;
+}
+export async function renderModeFor(url) {
+  const m = state.layout.render || 'auto';
+  if (m === 'cdp') return 'cdp';
+  if (m === 'iframe') return 'iframe';
+  return isLocalUrl(url) && await canFrame(url) ? 'iframe' : 'cdp';
+}
+let wallTabId = null; chrome.tabs.getCurrent().then(t => { wallTabId = t && t.id; });
+// Run code inside a device page, whichever way it is hosted.
+async function evalIn(inst, expression, fn, args = []) {
+  if (inst.tabId != null) return (await send(inst.tabId, 'Runtime.evaluate', { expression, returnByValue: true })).result.value;
+  if (inst.frameId != null && wallTabId != null) { const r = await chrome.scripting.executeScript({ target: { tabId: wallTabId, frameIds: [inst.frameId] }, func: fn, args }); return r && r[0] && r[0].result; }
+}
+const hosted = d => d.tabId != null || d.frameId != null;
+
 export async function createTarget(inst) {
+  inst.render = await renderModeFor(state.url);
+  if (inst.render === 'iframe') { inst.tabId = null; inst.frameId = null; inst.status = 'loading'; inst.error = ''; inst.url = state.url; inst.frame = ''; ui.mountFrame(inst, state.url); ui.renderPanelState(inst); return; }
+  return createTab(inst);
+}
+export function frameLoaded(inst) { if (inst.render === 'iframe' && inst.status !== 'error') { inst.status = 'ready'; ui.renderPanelState(inst); } }
+async function createTab(inst) {
   inst.status = 'loading'; inst.error = ''; ui.renderPanelState(inst);
   try {
     const me = await chrome.tabs.getCurrent();
     const tabId = (await chrome.tabs.create({ windowId: me.windowId, index: me.index + 1 + state.devices.filter(d => d.tabId != null).length, url: 'about:blank', active: false })).id;
-    inst.tabId = tabId; inst.url = state.url;
+    inst.tabId = tabId; inst.url = state.url; inst.attached = false;
     await ensureGroup(tabId);
-    await chrome.debugger.attach({ tabId }, '1.3');
+    await chrome.debugger.attach({ tabId }, '1.3'); inst.attached = true;
     await send(tabId, 'Page.enable');
     await send(tabId, 'Runtime.enable');
     await send(tabId, 'Runtime.addBinding', { name: '__vwReport' });
     await send(tabId, 'Page.addScriptToEvaluateOnNewDocument', { source: INJECT });
     await send(tabId, 'Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {});
     await applyEmulation(inst); await applyProfiles(inst);
+    // A 16px screencast keeps the hidden tab's compositor producing frames (without it, background tabs can stop
+    // painting and screenshots return the stale surface) and each frame is a true "pixels changed" signal.
+    await send(tabId, 'Page.startScreencast', { format: 'jpeg', quality: 1, maxWidth: 16, maxHeight: 16, everyNthFrame: 10 }).catch(() => {});
     const r = await send(tabId, 'Page.navigate', { url: state.url });
     if (r && r.errorText) setError(inst, r.errorText);
     inst.dirty = true;
   } catch (e) { setError(inst, e && e.message ? e.message : String(e)); }
 }
 export async function destroyTarget(inst) {
-  const tabId = inst.tabId; inst.tabId = null;
+  if (inst.render === 'iframe') { ui.unmountFrame(inst); inst.frameId = null; inst.render = 'cdp'; return; }
+  const tabId = inst.tabId; inst.tabId = null; inst.attached = false;
   if (tabId == null) return;
   try { await chrome.debugger.detach({ tabId }); } catch {}
   try { await chrome.tabs.remove(tabId); } catch {}
@@ -216,15 +210,38 @@ chrome.debugger.onEvent.addListener((src, method, params) => {
   } else if (method === 'Page.loadEventFired') {
     if (inst.status !== 'error') { inst.status = 'ready'; ui.renderPanelState(inst); }
     inst.dirty = true; setTimeout(() => { inst.dirty = true; }, 400);
+  } else if (method === 'Page.screencastFrame') {
+    send(src.tabId, 'Page.screencastFrameAck', { sessionId: params.sessionId }).catch(() => {});
+    inst.dirty = true; inst.painted = Date.now();
   } else if (method === 'Runtime.bindingCalled' && params.name === '__vwReport') {
     let data; try { data = JSON.parse(params.payload); } catch { return; }
     inst.dirty = true; inst.pageChanged = true;
-    if (data.type === 'check') { inst.issues = data.issues || []; ui.renderPanelState(inst); ui.renderIssues(); return; }
-    if (!isActive) return;
-    if (data.type === 'scroll' && state.sync.scroll) syncScroll(inst, data.ratio);
-    if (data.type === 'nav') onActiveNavigated(data.url);
+    handleReport(inst, data);
   }
 });
+function handleReport(inst, data) {
+  const isActive = inst.instanceId === state.activeId;
+  if (data.type === 'check') { inst.issues = data.issues || []; ui.renderPanelState(inst); ui.renderIssues(); return; }
+  if (data.type === 'focus') { if (!isActive) setActive(inst.instanceId); return; }
+  if (!isActive) return;
+  if (data.type === 'scroll' && state.sync.scroll) syncScroll(inst, data.ratio);
+  if (data.type === 'nav') { if (inst.url !== data.url) { inst.url = data.url; ui.renderPanelState(inst); } onActiveNavigated(data.url); }
+}
+// iframe devices: the agent is a content script; reports arrive as runtime messages tagged with the frame's name (= instanceId).
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (!msg || msg.vw !== 'frame' || !sender.tab || sender.tab.id !== wallTabId) return;
+  const inst = state.devices.find(d => d.instanceId === msg.id); if (!inst) return;
+  inst.frameId = sender.frameId;
+  handleReport(inst, msg);
+});
+// Inject the agent whenever an iframe device (re)loads; SPA route changes come from webNavigation since the content script's world cannot see history.pushState.
+chrome.webNavigation.onCompleted.addListener(d => {
+  if (wallTabId == null || d.tabId !== wallTabId || d.frameId === 0 || !isWebUrl(d.url)) return;
+  chrome.scripting.executeScript({ target: { tabId: wallTabId, frameIds: [d.frameId] }, files: ['agent.js'] }).catch(() => {});
+});
+const spaNav = d => { if (d.tabId !== wallTabId || d.frameId === 0) return; const inst = state.devices.find(x => x.frameId === d.frameId); if (inst) handleReport(inst, { type: 'nav', url: d.url }); };
+chrome.webNavigation.onHistoryStateUpdated.addListener(spaNav);
+chrome.webNavigation.onReferenceFragmentUpdated.addListener(spaNav);
 chrome.debugger.onDetach.addListener((src, reason) => {
   const inst = state.devices.find(d => d.tabId === src.tabId);
   if (!inst) return;
@@ -242,8 +259,8 @@ function onActiveNavigated(url) {
   state.url = url; ui.setUrl(url); pushRecent(url);
   if (!state.sync.navigation) return;
   for (const d of state.devices) {
-    if (d.instanceId === state.activeId || d.tabId == null || d.url === url) continue;
-    d.url = url; send(d.tabId, 'Page.navigate', { url }).catch(() => {});
+    if (d.instanceId === state.activeId || !hosted(d) || d.url === url) continue;
+    d.url = url; if (d.render === 'iframe') ui.setFrameUrl(d, url); else send(d.tabId, 'Page.navigate', { url }).catch(() => {});
   }
 }
 let scrollTimer = null, pendingRatio = null;
@@ -253,10 +270,33 @@ function syncScroll(from, ratio) {
   scrollTimer = setTimeout(() => {
     scrollTimer = null; const r = pendingRatio;
     for (const d of state.devices) {
-      if (d === from || d.tabId == null || d.paused) continue;
-      send(d.tabId, 'Runtime.evaluate', { expression: `(()=>{const de=document.documentElement;const max=de.scrollHeight-innerHeight;window.scrollTo({top:max*${r},behavior:'instant'})})()` }).then(() => { d.dirty = true; }).catch(() => {});
+      if (d === from || !hosted(d) || d.paused) continue;
+      evalIn(d, `(${scrollToRatio})(${r})`, scrollToRatio, [r]).then(() => { d.dirty = true; }).catch(() => {});
     }
   }, 80);
+}
+
+// Functions that run inside device pages. Used as CDP expressions (via toString) and as executeScript funcs for iframes.
+function scrollToRatio(r) { const de = document.documentElement; const max = de.scrollHeight - innerHeight; window.scrollTo({ top: max * r, behavior: 'instant' }); }
+function historyGo(dir) { dir > 0 ? history.forward() : history.back(); }
+function findAndClick(d) {
+  const vis = e => e && e.getClientRects().length; let el = null;
+  if (d.id) el = document.getElementById(d.id);
+  if (!vis(el) && d.testid) el = document.querySelector('[data-testid="' + d.testid.replace(/"/g, '') + '"]');
+  if (!vis(el) && d.href) el = [...document.querySelectorAll('a[href]')].find(a => a.getAttribute('href') === d.href && vis(a));
+  if (!vis(el) && d.aria) el = document.querySelector('[aria-label="' + d.aria.replace(/"/g, '') + '"]');
+  if (!vis(el) && d.text) el = [...document.querySelectorAll(d.tag + ',a,button,[role=button]')].find(e => vis(e) && (e.innerText || e.value || '').trim().slice(0, 80) === d.text);
+  if (vis(el)) el.click();
+}
+function setField(f) {
+  let el = null; if (f.id) el = document.getElementById(f.id); if (!el && f.name) el = document.querySelector('[name="' + f.name + '"]'); if (!el && f.testid) el = document.querySelector('[data-testid="' + f.testid + '"]'); if (!el && f.ph) el = document.querySelector('[placeholder="' + f.ph.replace(/"/g, '') + '"]');
+  if (!el) return; const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value')?.set; setter ? setter.call(el, f.value) : el.value = f.value; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function detectBp() {
+  const out = new Set(); const re = /\((?:min|max)-width\s*:\s*([\d.]+)(px|em|rem)\)/g;
+  const walk = r => { for (const x of r) { if (x.media) { let m; const t = x.media.mediaText; while ((m = re.exec(t))) out.add(m[2] === 'px' ? +m[1] : Math.round(+m[1] * 16)); } if (x.cssRules) { try { walk(x.cssRules); } catch (e) {} } } };
+  for (const sh of document.styleSheets) { try { walk(sh.cssRules); } catch (e) {} }
+  return [...out].filter(n => n >= 200 && n <= 3000).sort((a, b) => a - b);
 }
 
 // ---------- capture loop ----------
@@ -265,10 +305,12 @@ function syncScroll(from, ratio) {
 // A screenshot requested before a tab's first paint can hang. Stalled tabs are re-asked for a frame until one
 // arrives (fresh requests succeed once the renderer has produced its first frame).
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-let nudging = null; const nudgeQ = [];
-function nudge(inst) {
-  if (inst.tabId == null || inst.frame || nudging === inst || nudgeQ.includes(inst)) return;
-  nudgeQ.push(inst); pumpNudge();
+// Every stalled device is probed concurrently; there is nothing to serialise since no tab is ever activated.
+async function nudge(inst) {
+  if (inst.tabId == null || inst.frame || inst.nudging) return;
+  inst.nudging = true;
+  try { const t0 = Date.now(); while (!inst.frame && inst.tabId != null && Date.now() - t0 < 8000) { await sleep(200); await probe(inst); } } catch {}
+  inst.nudging = false;
 }
 // DOM keeps changing while the pixels never move: drop the cached frame and force a fresh capture.
 function wake(inst) {
@@ -276,27 +318,23 @@ function wake(inst) {
   inst.wokeAt = Date.now(); inst.lastData = null; inst.dirty = true;
   send(inst.tabId, 'Page.setWebLifecycleState', { state: 'active' }).catch(() => {});
 }
-async function pumpNudge() {
-  if (nudging || !nudgeQ.length) return;
-  nudging = nudgeQ.shift();
-  try {
-    const t0 = Date.now();
-    while (!nudging.frame && nudging.tabId != null && Date.now() - t0 < 6000) { await sleep(200); await probe(nudging); }
-  } catch {}
-  nudging = null;
-  if (nudgeQ.length) pumpNudge();
-}
 function activateControllerTab() {}   // kept for call sites; nothing to activate any more
 // Frames are captured at the resolution they are displayed at (clip.scale), so a phone shown at 40% costs a
 // fraction of a full-size capture. Downloads (screenshotDevice) always use the full device resolution.
 const capScaleFor = inst => Math.min(1, Math.max(0.2, +((inst.scale || 1) * (window.devicePixelRatio || 1) * 1.08).toFixed(2)));
-const ACTIVE_MIN = 400, ACTIVE_MAX = 1500, OTHER_MIN = 800, OTHER_MAX = 4000, MAX_INFLIGHT = 3;
+// Active device up to 2.5 fps, others up to ~0.8 fps, at most 2 captures in flight: animated pages stay affordable
+// (see README performance table) while static walls cost only the heartbeat.
+const ACTIVE_MIN = 400, ACTIVE_MAX = 1500, OTHER_MIN = 1200, OTHER_MAX = 4000, MAX_INFLIGHT = 2;
 let inflight = 0;
+// Document-space position of the visual viewport (what the user sees), plus its size for input mapping.
+async function viewportOf(inst) {
+  try { const m = await send(inst.tabId, 'Page.getLayoutMetrics'); const v = m.cssVisualViewport || m.visualViewport; inst.vv = v; return { x: Math.round(v.pageX || 0), y: Math.round(v.pageY || 0) }; } catch { return { x: 0, y: 0 }; }
+}
 async function probe(inst) {
   if (inst.tabId == null || inst.frame) return;
   try {
-    const [w, h] = dims(inst);
-    const r = await Promise.race([send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: 0, y: 0, width: w, height: h, scale: capScaleFor(inst) } }), sleep(800)]);
+    const [w, h] = dims(inst); const vv = await viewportOf(inst);
+    const r = await Promise.race([send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: vv.x, y: vv.y, width: w, height: h, scale: capScaleFor(inst) } }), sleep(800)]);
     if (r && r.data && !inst.frame) { inst.lastData = r.data; inst.frame = 'data:image/jpeg;base64,' + r.data; inst.capScale = capScaleFor(inst); ui.frameUpdated(inst); if (inst.status === 'loading') { inst.status = 'ready'; ui.renderPanelState(inst); } }
   } catch {}
 }
@@ -309,7 +347,10 @@ async function capture(inst, force = false) {
   const reset = setTimeout(() => { if (inst.capturing) { inst.capturing = false; inflight--; inst.dirty = true; } }, 8000);
   try {
     const [w, h] = dims(inst); const scale = capScaleFor(inst);
-    const r = await send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: 0, y: 0, width: w, height: h, scale } });
+    // clip is in document coordinates: offset it by the visual viewport's page position or a scrolled page captures the
+    // (unpainted) area above the viewport and comes back white or half-drawn.
+    const vv = await viewportOf(inst);
+    const r = await send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: vv.x, y: vv.y, width: w, height: h, scale } });
     inst.capScale = scale; inst.lastCaptureMs = Date.now() - started;
     const changed = r.data !== inst.lastData;
     // Adaptive cadence: animating content is polled quickly, still content backs off exponentially.
@@ -335,7 +376,7 @@ setInterval(() => {
   const now = Date.now();
   const due = [];
   for (const d of state.devices) {
-    if (d.tabId == null || d.capturing || d.paused || d.status === 'error') continue;
+    if (d.tabId == null || !d.attached || d.capturing || d.paused || d.status === 'error') continue;
     if (d.frame && d.capScale && Math.abs(capScaleFor(d) - d.capScale) > 0.12) d.dirty = true;   // zoom changed: refresh at the new resolution
     if (d.dirty && now - (d.nextAt || 0) > -(d.instanceId === state.activeId ? ACTIVE_MIN : OTHER_MIN) * 0.6) due.push([0, d]);
     else if (!d.dirty && now >= (d.nextAt || 0)) due.push([d.instanceId === state.activeId ? 1 : 2, d]);
@@ -371,6 +412,7 @@ export function setActive(id) { state.activeId = id; ui.setActive(id); activateC
 export function togglePause(inst) { inst.paused = !inst.paused; ui.renderPanelState(inst); if (!inst.paused) inst.dirty = true; }
 export function retry(inst) { destroyTarget(inst).then(() => createTarget(inst)).then(activateControllerTab); }
 export async function reloadOne(inst, hard = false) {
+  if (inst.render === 'iframe') { inst.status = 'loading'; ui.renderPanelState(inst); if (inst.frameId != null) evalIn(inst, '', () => location.reload()).catch(() => ui.setFrameUrl(inst, inst.url || state.url, true)); else ui.setFrameUrl(inst, inst.url || state.url, true); return; }
   if (inst.tabId == null) return retry(inst);
   inst.status = 'loading'; inst.errorKind = ''; ui.renderPanelState(inst);
   send(inst.tabId, 'Page.reload', { ignoreCache: hard }).catch(() => {});
@@ -384,10 +426,12 @@ export function setViewport(inst, w, h, dpr) {
 export async function navigateAll(url) {
   url = normalizeUrl(url); if (!url) return;
   state.url = url; ui.setUrl(url); pushRecent(url);
+  const want = await renderModeFor(url);
   for (const d of state.devices) {
     d.url = url; d.errorKind = '';
-    if (d.tabId != null) { d.status = 'loading'; ui.renderPanelState(d); send(d.tabId, 'Page.navigate', { url }).then(r => { if (r && r.errorText) setError(d, r.errorText); }).catch(() => {}); }
-    else retry(d);
+    if (d.render === 'iframe' && want === 'iframe') { d.status = 'loading'; ui.renderPanelState(d); ui.setFrameUrl(d, url, true); }   // same URL = reload
+    else if (d.render !== 'iframe' && want === 'cdp' && d.tabId != null) { d.status = 'loading'; ui.renderPanelState(d); send(d.tabId, 'Page.navigate', { url }).then(r => { if (r && r.errorText) setError(d, r.errorText); }).catch(() => {}); }
+    else retry(d);   // hosting mode changes with the URL (local → remote or back): rebuild the device
   }
 }
 export function normalizeUrl(u) {
@@ -402,9 +446,9 @@ function pushRecent(url) {
     chrome.storage.local.set({ recentUrls }); ui.renderRecent(recentUrls);
   });
 }
-export function navHistoryOne(inst, dir) { if (inst.tabId != null) send(inst.tabId, 'Runtime.evaluate', { expression: dir > 0 ? 'history.forward()' : 'history.back()' }).catch(() => {}); }
+export function navHistoryOne(inst, dir) { if (hosted(inst)) evalIn(inst, `(${historyGo})(${dir})`, historyGo, [dir]).catch(() => {}); }
 export function navHistory(dir) {
-  for (const d of state.devices) if (d.tabId != null) send(d.tabId, 'Runtime.evaluate', { expression: dir > 0 ? 'history.forward()' : 'history.back()' }).catch(() => {});
+  for (const d of state.devices) navHistoryOne(d, dir);
 }
 export function reloadAll(hard = false) {
   const list = state.sync.reload ? state.devices : state.devices.filter(d => d.instanceId === state.activeId);
@@ -474,27 +518,19 @@ function wireInput(inst, screen) {
 // Element descriptor of what was clicked in the active device; matched in others by id > data-testid > href > aria-label > text.
 const DESCRIBE = (x, y) => `(()=>{let el=document.elementFromPoint(${x},${y});if(!el)return null;const t=el.closest('a,button,[role=button],input,select,textarea,label,summary')||el;
   return {id:t.id||'',testid:t.getAttribute('data-testid')||'',href:t.getAttribute('href')||'',aria:t.getAttribute('aria-label')||'',text:(t.innerText||t.value||'').trim().slice(0,80),tag:t.tagName}})()`;
-const FIND = `(d)=>{const vis=e=>e&&e.getClientRects().length;let el=null;
-  if(d.id)el=document.getElementById(d.id);
-  if(!vis(el)&&d.testid)el=document.querySelector('[data-testid="'+d.testid.replace(/"/g,'')+'"]');
-  if(!vis(el)&&d.href)el=[...document.querySelectorAll('a[href]')].find(a=>a.getAttribute('href')===d.href&&vis(a));
-  if(!vis(el)&&d.aria)el=document.querySelector('[aria-label="'+d.aria.replace(/"/g,'')+'"]');
-  if(!vis(el)&&d.text)el=[...document.querySelectorAll(d.tag+',a,button,[role=button]')].find(e=>vis(e)&&(e.innerText||e.value||'').trim().slice(0,80)===d.text);
-  return vis(el)?el:null}`;
+
 async function syncClick(from, { x, y }) {
   let desc; try { desc = (await send(from.tabId, 'Runtime.evaluate', { expression: DESCRIBE(x, y), returnByValue: true })).result.value; } catch { return; }
   if (!desc || !(desc.id || desc.testid || desc.href || desc.aria || desc.text)) return;
   for (const d of state.devices) {
-    if (d === from || d.tabId == null || d.paused) continue;
-    send(d.tabId, 'Runtime.evaluate', { expression: `(${FIND})(${JSON.stringify(desc)})?.click()` }).then(() => { d.dirty = true; }).catch(() => {});
+    if (d === from || !hosted(d) || d.paused) continue;
+    evalIn(d, `(${findAndClick})(${JSON.stringify(desc)})`, findAndClick, [desc]).then(() => { d.dirty = true; }).catch(() => {});
   }
 }
 async function syncInput(from) {
   let f; try { f = (await send(from.tabId, 'Runtime.evaluate', { expression: `(()=>{const a=document.activeElement;if(!a||!('value' in a))return null;return {id:a.id,name:a.name||'',testid:a.getAttribute('data-testid')||'',ph:a.placeholder||'',type:a.type||'',value:a.value}})()`, returnByValue: true })).result.value; } catch { return; }
   if (!f) return;
-  const expr = `((f)=>{let el=null;if(f.id)el=document.getElementById(f.id);if(!el&&f.name)el=document.querySelector('[name="'+f.name+'"]');if(!el&&f.testid)el=document.querySelector('[data-testid="'+f.testid+'"]');if(!el&&f.ph)el=document.querySelector('[placeholder="'+f.ph.replace(/"/g,'')+'"]');
-    if(!el)return;const setter=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),'value')?.set;setter?setter.call(el,f.value):el.value=f.value;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))})(${JSON.stringify(f)})`;
-  for (const d of state.devices) { if (d === from || d.tabId == null || d.paused) continue; send(d.tabId, 'Runtime.evaluate', { expression: expr }).then(() => { d.dirty = true; }).catch(() => {}); }
+  for (const d of state.devices) { if (d === from || !hosted(d) || d.paused) continue; evalIn(d, `(${setField})(${JSON.stringify(f)})`, setField, [f]).then(() => { d.dirty = true; }).catch(() => {}); }
 }
 
 
@@ -505,8 +541,8 @@ export function download(name, dataUrl) { const a = document.createElement('a');
 export const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 export async function screenshotDevice(inst) {
   if (inst.tabId == null) return;
-  const [w, h] = dims(inst);
-  const r = await send(inst.tabId, 'Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, width: w, height: h, scale: inst.dpr } });
+  const [w, h] = dims(inst); const vv = await viewportOf(inst);
+  const r = await send(inst.tabId, 'Page.captureScreenshot', { format: 'png', clip: { x: vv.x, y: vv.y, width: w, height: h, scale: inst.dpr } });
   download(`${slug(inst.name)}-${w}x${h}.png`, 'data:image/png;base64,' + r.data);
 }
 export async function screenshotFullPage(inst) {
@@ -522,9 +558,9 @@ export async function screenshotAll(full = false) {
   for (const d of state.devices) if (d.tabId != null) { await (full ? screenshotFullPage(d) : screenshotDevice(d)); await new Promise(r => setTimeout(r, 300)); }
 }
 export async function detectBreakpoints() {
-  const src = state.devices.find(d => d.instanceId === state.activeId && d.tabId != null) || state.devices.find(d => d.tabId != null);
+  const src = state.devices.find(d => d.instanceId === state.activeId && hosted(d)) || state.devices.find(hosted);
   if (!src) return [];
-  try { const r = await send(src.tabId, 'Runtime.evaluate', { expression: DETECT_BP, returnByValue: true }); return r.result.value || []; } catch { return []; }
+  try { return (await evalIn(src, `(${detectBp})()`, detectBp)) || []; } catch { return []; }
 }
 export const widthPreset = w => ({ id: 'bp-' + w, name: w + 'px', brand: 'Breakpoint', category: 'breakpoint', os: 'any', width: w, height: w < 700 ? 800 : w < 1100 ? 1024 : 900, dpr: w < 700 ? 2 : 1, mobile: w < 1024, touch: w < 1024 });
 
@@ -576,6 +612,7 @@ export async function loadSession(id) {
 window.addEventListener('beforeunload', () => { for (const d of state.devices) if (d.tabId != null) { chrome.debugger.detach({ tabId: d.tabId }).catch(() => {}); chrome.tabs.remove(d.tabId).catch(() => {}); } });
 
 // Toggle mobile UA emulation; re-creates targets so the previous override is fully dropped.
+export function setRenderMode(m) { state.layout.render = m; savePrefs(); frameCache.clear(); for (const d of state.devices) retry(d); }
 export async function setMobileUA(on) {
   state.layout.mobileUA = !!on; savePrefs();
   for (const d of state.devices) if (d.mobile) retry(d);

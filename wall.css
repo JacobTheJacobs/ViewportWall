@@ -358,3 +358,6 @@ body.present .present-title{display:block!important;text-align:center;padding:36
 @media (max-width:1250px){.switch.big span,.btn.dd .lbl{display:none}.urlgroup{min-width:200px}}
 
 .nv{cursor:pointer;display:inline-flex;border-radius:6px}.nv:hover{background:rgba(0,0,0,.08)}.pill[data-nav]{cursor:text}
+.viewport iframe.live{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;display:block}
+.panel.iframe-mode .viewport img{visibility:hidden}
+.panel.iframe-mode .ov-loading{pointer-events:none}

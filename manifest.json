@@ -9,7 +9,9 @@
     "tabs",
     "tabGroups",
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting",
+    "webNavigation"
   ],
   "action": {
     "default_title": "Open Viewport Wall"
@@ -22,5 +24,12 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "host_permissions": [
+    "http://localhost/*",
+    "https://localhost/*",
+    "http://127.0.0.1/*",
+    "https://127.0.0.1/*",
+    "http://*.localhost/*"
+  ]
 }
