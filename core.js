@@ -7,7 +7,7 @@ export const state = {
   devices: [],
   activeId: null,
   sync: { navigation: true, scroll: true, clicks: false, input: false, reload: true },
-  layout: { type: 'auto', zoom: 'fit', frames: 'realistic', browser: 'auto', theme: 'dark', sidebar: true },
+  layout: { type: 'auto', zoom: 'fit', frames: 'realistic', browser: 'auto', theme: 'dark', sidebar: true, mobileUA: false },
   windowId: null,
   autoReload: 0,
 };
@@ -145,7 +145,8 @@ export async function applyEmulation(inst) {
     screenOrientation: inst.orientation === 'portrait' ? { type: 'portraitPrimary', angle: 0 } : { type: 'landscapePrimary', angle: 90 },
   });
   await send(inst.tabId, 'Emulation.setTouchEmulationEnabled', { enabled: inst.touch, maxTouchPoints: inst.touch ? 5 : 1 });
-  if (inst.mobile) await send(inst.tabId, 'Emulation.setUserAgentOverride', { userAgent: UA[inst.os] || UA.mobile, platform: inst.os === 'ios' ? 'iPhone' : 'Linux armv8l' });
+  // UA override is opt-in: many sites (LinkedIn, Google, banks) bind sessions to the UA and log you out when it changes.
+  if (inst.mobile && state.layout.mobileUA) await send(inst.tabId, 'Emulation.setUserAgentOverride', { userAgent: UA[inst.os] || UA.mobile, platform: inst.os === 'ios' ? 'iPhone' : 'Linux armv8l' });
 }
 
 // Chrome net error → product copy.
@@ -258,7 +259,8 @@ async function capture(inst, force = false) {
   try {
     const [w, h] = dims(inst);
     const r = await send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 65, optimizeForSpeed: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } });
-    inst.frame = 'data:image/jpeg;base64,' + r.data;
+    if (r.data === inst.lastData) return;          // unchanged pixels: keep the current image, no flicker
+    inst.lastData = r.data; inst.frame = 'data:image/jpeg;base64,' + r.data;
     ui.frameUpdated(inst);
     if (inst.status === 'loading') { inst.status = 'ready'; ui.renderPanelState(inst); }
   } catch { inst.dirty = true; }
@@ -499,3 +501,9 @@ export async function loadSession(id) {
 }
 
 window.addEventListener('beforeunload', () => { for (const d of state.devices) if (d.tabId != null) chrome.debugger.detach({ tabId: d.tabId }); });
+
+// Toggle mobile UA emulation; re-creates targets so the previous override is fully dropped.
+export async function setMobileUA(on) {
+  state.layout.mobileUA = !!on; savePrefs();
+  for (const d of state.devices) if (d.mobile) retry(d);
+}

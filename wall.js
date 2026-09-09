@@ -92,7 +92,10 @@ function renderPanelState(d) {
   if (d.orientation !== el.dataset.or) { el.dataset.or = d.orientation; buildFrame(d); relayout(); }
 }
 const hostOf = u => { try { return new URL(u).host; } catch { return u || ''; } };
-function frameUpdated(d) { const img = panels.get(d.instanceId)?.querySelector('img'); if (img) img.src = d.frame; if (focusId === d.instanceId || state.layout.type === 'focus') { const t = $(`#thumbs [data-id="${d.instanceId}"] img`); if (t) t.src = d.frame; } }
+function frameUpdated(d) {
+  const img = panels.get(d.instanceId)?.querySelector('img'); if (!img) return;
+  const next = new Image(); next.src = d.frame;
+  (next.decode ? next.decode().catch(() => {}) : Promise.resolve()).then(() => { if (img.isConnected) img.src = next.src; }); if (focusId === d.instanceId || state.layout.type === 'focus') { const t = $(`#thumbs [data-id="${d.instanceId}"] img`); if (t) t.src = d.frame; } }
 function setActiveUI(id) {
   for (const [iid, el] of panels) el.classList.toggle('active', iid === id);
   for (const d of state.devices) renderPanelState(d);
@@ -245,6 +248,7 @@ $('#morePop').addEventListener('click', async e => {
   else if (k === 'about') $('#onboard').hidden = false;
 });
 $('#auto').addEventListener('change', e => C.setAutoReload(+e.target.value));
+$('#mobileUA').addEventListener('change', e => { C.setMobileUA(e.target.checked); toast(e.target.checked ? 'Mobile user agent on. Some sites may ask you to sign in again.' : 'Mobile user agent off'); });
 $('#themeSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.theme = v; applyTheme(); C.savePrefs(); });
 function applyTheme() { document.documentElement.dataset.theme = state.layout.theme || 'dark'; setSeg('themeSeg', state.layout.theme || 'dark'); }
 $('#sessions').addEventListener('change', async e => {
@@ -340,6 +344,7 @@ $$('.statusbar .seg[data-key]').forEach(seg => seg.addEventListener('click', e =
   if (seg.dataset.key === 'type') { if (v !== 'free') state.devices.forEach(d => { d.fx = d.fy = null; }); relayout(); } else rebuildAll();
 }));
 function syncUIFromState() {
+  $('#mobileUA').checked = !!state.layout.mobileUA;
   setSeg('frameSeg', state.layout.frames); setSeg('browserSeg', state.layout.browser); setSeg('layoutSeg', state.layout.type); applyTheme(); syncSync();
   document.body.classList.toggle('sb-collapsed', state.layout.sidebar === false);
   $('#url').value = state.url; rebuildAll(); renderSets(); renderSidebarDevices(); renderStatus();
