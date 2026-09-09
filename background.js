@@ -1,4 +1,4 @@
-// Service worker: opens the wall, cleans up device windows when a wall tab closes.
+// Service worker: opens the wall, closes the device tab group when a wall tab closes.
 
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (msg.type === 'open-wall') {
@@ -9,9 +9,9 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
     chrome.tabs.create({ url: chrome.runtime.getURL('wall.html?' + params.toString()) });
     respond({ ok: true });
   }
-  if (msg.type === 'register-window' && sender.tab) {
+  if (msg.type === 'register-group' && sender.tab) {
     chrome.storage.session.get('walls').then(({ walls = {} }) => {
-      walls[sender.tab.id] = msg.windowId;
+      walls[sender.tab.id] = msg.groupId;
       return chrome.storage.session.set({ walls });
     }).then(() => respond({ ok: true }));
     return true;
@@ -36,9 +36,9 @@ chrome.action.onClicked.addListener(async tab => {
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   const { walls = {} } = await chrome.storage.session.get('walls');
-  const windowId = walls[tabId];
-  if (windowId == null) return;
+  const groupId = walls[tabId];
+  if (groupId == null) return;
   delete walls[tabId];
   await chrome.storage.session.set({ walls });
-  try { await chrome.windows.remove(windowId); } catch {}
+  try { const tabs = await chrome.tabs.query({ groupId }); await chrome.tabs.remove(tabs.map(t => t.id)); } catch {}
 });

@@ -10,7 +10,7 @@ export const state = {
   sync: { navigation: true, scroll: true, clicks: false, input: false, reload: true },
   layout: { type: 'auto', zoom: 'fith', frames: 'realistic', frameStyle: 'realistic', browser: 'auto', theme: 'dark', mobileUA: false },
   frozen: false,
-  windowId: null,
+  groupId: null,
   autoReload: 0,
 };
 export let customDevices = [];
@@ -122,33 +122,16 @@ function makeInstance(preset) {
 }
 export const dims = i => i.orientation === 'portrait' ? [i.baseW, i.baseH] : [i.baseH, i.baseW];
 
-async function ensureWindow() {
-  if (state.windowId != null) { try { await chrome.windows.get(state.windowId); return; } catch {} }
-  // Small, unfocused helper window parked in the bottom-right corner; focus goes straight back to the wall.
-  const w = 420, h = 320;
-  const win = await chrome.windows.create({ url: 'about:blank', focused: false, width: w, height: h, left: Math.max(0, screen.availWidth - w - 8), top: Math.max(0, screen.availHeight - h - 8) });
-  state.windowId = win.id;
-  state.spareTabId = win.tabs && win.tabs[0] ? win.tabs[0].id : null;
-  chrome.runtime.sendMessage({ type: 'register-window', windowId: win.id });
-  // Keep it out of the way: parked bottom-right (window managers ignore the position at creation), then minimized.
-  // If a minimized window stops tabs from painting on this platform, restoreWindow() brings it back unfocused.
-  try { await chrome.windows.update(win.id, { state: 'minimized' }); state.windowMinimized = true; } catch {}
-  await focusWall();
-}
-async function focusWall() {
-  for (let i = 0; i < 3; i++) {
-    try { const me = await chrome.windows.getCurrent(); await chrome.windows.update(me.id, { focused: true }); window.focus(); if ((await chrome.windows.get(me.id)).focused) return; } catch {}
-    await new Promise(r => setTimeout(r, 250));
-  }
-}
-async function restoreWindow() {
-  if (!state.windowMinimized || state.windowId == null) return false;
-  state.windowMinimized = false;
-  const w = 420, h = 320;
-  try { await chrome.windows.update(state.windowId, { state: 'normal', left: Math.max(0, screen.availWidth - w - 8), top: Math.max(0, screen.availHeight - h - 8), width: w, height: h }); } catch { return false; }
-  await focusWall();
-  ui.toast('Helper window restored so devices can render');
-  return true;
+// Device tabs live in the wall's own window as background tabs inside a collapsed "Viewport Wall" tab group.
+// Nothing else opens: no helper window, no focus changes. Background tabs keep rendering while the debugger is attached.
+async function ensureGroup(tabId) {
+  try {
+    let groupId = state.groupId;
+    if (groupId != null) { try { await chrome.tabGroups.get(groupId); } catch { groupId = null; } }
+    groupId = await chrome.tabs.group(groupId != null ? { tabIds: [tabId], groupId } : { tabIds: [tabId] });
+    if (groupId !== state.groupId) { state.groupId = groupId; chrome.runtime.sendMessage({ type: 'register-group', groupId }).catch(() => {}); }
+    await chrome.tabGroups.update(groupId, { collapsed: true, title: 'Viewport Wall', color: 'blue' });
+  } catch {}
 }
 
 const NET = {
@@ -197,20 +180,20 @@ export function setError(inst, msg, kind) {
 export async function createTarget(inst) {
   inst.status = 'loading'; inst.error = ''; ui.renderPanelState(inst);
   try {
-    await ensureWindow();
-    let tabId;
-    if (state.spareTabId != null) { tabId = state.spareTabId; state.spareTabId = null; }
-    else tabId = (await chrome.tabs.create({ windowId: state.windowId, url: 'about:blank', active: false })).id;
+    const me = await chrome.tabs.getCurrent();
+    const tabId = (await chrome.tabs.create({ windowId: me.windowId, index: me.index + 1 + state.devices.filter(d => d.tabId != null).length, url: 'about:blank', active: false })).id;
     inst.tabId = tabId; inst.url = state.url;
+    await ensureGroup(tabId);
     await chrome.debugger.attach({ tabId }, '1.3');
     await send(tabId, 'Page.enable');
     await send(tabId, 'Runtime.enable');
     await send(tabId, 'Runtime.addBinding', { name: '__vwReport' });
     await send(tabId, 'Page.addScriptToEvaluateOnNewDocument', { source: INJECT });
+    await send(tabId, 'Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {});
     await applyEmulation(inst); await applyProfiles(inst);
     const r = await send(tabId, 'Page.navigate', { url: state.url });
     if (r && r.errorText) setError(inst, r.errorText);
-    inst.dirty = true; chrome.tabs.update(tabId, { active: true }).catch(() => {});
+    inst.dirty = true;
   } catch (e) { setError(inst, e && e.message ? e.message : String(e)); }
 }
 export async function destroyTarget(inst) {
@@ -279,46 +262,31 @@ function syncScroll(from, ratio) {
 // ---------- capture loop ----------
 // Background tabs in an occluded window can stall their first paint. Activating the tab inside the helper window
 // forces a frame; it is invisible to the user because the helper window is never focused.
-// Stalled tabs are woken one at a time: each stays active until its first frame arrives (max 3s), then the
-// controller tab is restored. A fixed activation window was too short for heavy pages at DPR 3.
+// A screenshot requested before a tab's first paint can hang. Stalled tabs are re-asked for a frame until one
+// arrives (fresh requests succeed once the renderer has produced its first frame).
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let nudging = null; const nudgeQ = [];
 function nudge(inst) {
   if (inst.tabId == null || inst.frame || nudging === inst || nudgeQ.includes(inst)) return;
   nudgeQ.push(inst); pumpNudge();
 }
+// DOM keeps changing while the pixels never move: drop the cached frame and force a fresh capture.
 function wake(inst) {
-  if (inst.tabId == null || inst.instanceId === state.activeId || nudging === inst || nudgeQ.includes(inst) || inst.wokeAt && Date.now() - inst.wokeAt < 8000) return;
-  inst.wokeAt = Date.now(); inst.wake = true; nudgeQ.push(inst); pumpNudge();
+  if (inst.tabId == null || inst.wokeAt && Date.now() - inst.wokeAt < 8000) return;
+  inst.wokeAt = Date.now(); inst.lastData = null; inst.dirty = true;
+  send(inst.tabId, 'Page.setWebLifecycleState', { state: 'active' }).catch(() => {});
 }
 async function pumpNudge() {
   if (nudging || !nudgeQ.length) return;
   nudging = nudgeQ.shift();
   try {
-    if (nudging.wake) {
-      nudging.wake = false;
-      if (nudging.tabId != null) { await chrome.tabs.update(nudging.tabId, { active: true }); await sleep(450); nudging.lastData = null; nudging.dirty = true; }
-    } else if (nudging.tabId != null && !nudging.frame) {
-      await chrome.tabs.update(nudging.tabId, { active: true });
-      const t0 = Date.now();
-      // A screenshot requested while the tab was hidden can hang even after it is shown, so ask again now that it is visible.
-      while (!nudging.frame && nudging.tabId != null && Date.now() - t0 < 3000) { await sleep(120); await probe(nudging); }
-      // Still nothing: a minimized helper window may not paint on this platform. Bring it back (unfocused) and try again.
-      if (!nudging.frame && nudging.tabId != null && await restoreWindow()) {
-        const t1 = Date.now();
-        while (!nudging.frame && nudging.tabId != null && Date.now() - t1 < 3000) { await sleep(150); await probe(nudging); }
-      }
-    }
+    const t0 = Date.now();
+    while (!nudging.frame && nudging.tabId != null && Date.now() - t0 < 6000) { await sleep(200); await probe(nudging); }
   } catch {}
   nudging = null;
-  if (nudgeQ.length) pumpNudge(); else activateControllerTab();
+  if (nudgeQ.length) pumpNudge();
 }
-// The helper window's active tab must be the wall's active device: input events are only reliable on the active tab.
-let actT = null;
-function activateControllerTab() {
-  clearTimeout(actT);
-  actT = setTimeout(() => { const a = state.devices.find(d => d.instanceId === state.activeId); if (a && a.tabId != null) chrome.tabs.update(a.tabId, { active: true }).catch(() => {}); }, 50);
-}
+function activateControllerTab() {}   // kept for call sites; nothing to activate any more
 // Frames are captured at the resolution they are displayed at (clip.scale), so a phone shown at 40% costs a
 // fraction of a full-size capture. Downloads (screenshotDevice) always use the full device resolution.
 const capScaleFor = inst => Math.min(1, Math.max(0.2, +((inst.scale || 1) * (window.devicePixelRatio || 1) * 1.08).toFixed(2)));
@@ -604,7 +572,7 @@ export async function loadSession(id) {
   return x;
 }
 
-window.addEventListener('beforeunload', () => { for (const d of state.devices) if (d.tabId != null) chrome.debugger.detach({ tabId: d.tabId }); });
+window.addEventListener('beforeunload', () => { for (const d of state.devices) if (d.tabId != null) { chrome.debugger.detach({ tabId: d.tabId }).catch(() => {}); chrome.tabs.remove(d.tabId).catch(() => {}); } });
 
 // Toggle mobile UA emulation; re-creates targets so the previous override is fully dropped.
 export async function setMobileUA(on) {

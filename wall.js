@@ -108,7 +108,8 @@ function relayout() {
   wallEl.className = big ? 'focus' : type === 'auto' ? (fitH ? 'horizontal' : 'auto') : type;
   const list = state.devices.filter(d => panels.has(d.instanceId));
   for (const d of list) if (!d.outer) buildFrame(d);
-  let base = big ? fitMany(list.filter(d => focusIds.includes(d.instanceId))) : zoom === 'fit' ? fitScale(list) : fitH ? fitHeight(list) : Number(zoom);
+  const numeric = !isNaN(Number(zoom));
+  let base = big ? (numeric ? Number(zoom) : fitMany(list.filter(d => focusIds.includes(d.instanceId)))) : zoom === 'fit' ? fitScale(list) : fitH ? fitHeight(list) : Number(zoom);
   for (const d of list) {
     const el = panels.get(d.instanceId);
     const hidden = big && !focusIds.includes(d.instanceId); el.style.display = hidden ? 'none' : '';
@@ -141,7 +142,7 @@ function fitScale(list) {
 function fitHeight(list) { if (!list.length) return 1; const H = canvasEl.clientHeight - 18 - 22 - 12 - LABEL_H; return clamp(H / Math.max(...list.map(d => d.outer[1]))); }
 function fitMany(list) {
   if (!list.length) return 1;
-  const W = canvasEl.clientWidth - PAD * 2 - (list.length - 1) * GAP_X, H = canvasEl.clientHeight - 40 - 150 - LABEL_H;
+  const W = canvasEl.clientWidth - PAD * 2 - (list.length - 1) * GAP_X, H = canvasEl.clientHeight - 24 - ($('#thumbs').offsetHeight || 0) - LABEL_H;
   return clamp(Math.min(W / list.reduce((a, d) => a + d.outer[0], 0), H / Math.max(...list.map(d => d.outer[1]))));
 }
 window.addEventListener('resize', relayout);
@@ -203,7 +204,7 @@ function wireResize(d, el) {
 }
 canvasEl.addEventListener('wheel', e => { if (!(e.ctrlKey || e.metaKey) || e.target.closest('.viewport')) return; e.preventDefault(); stepZoom(e.deltaY < 0 ? 1 : -1); }, { passive: false });
 const ZOOMS = [0.25, 0.33, 0.5, 0.75, 1];
-function currentScale() { return state.layout.zoom === 'fit' ? fitScale(state.devices) : state.layout.zoom === 'fith' ? fitHeight(state.devices) : Number(state.layout.zoom); }
+function currentScale() { const z = state.layout.zoom; if (!isNaN(Number(z))) return Number(z); const big = focusIds.length > 0; return big ? fitMany(state.devices.filter(d => focusIds.includes(d.instanceId))) : z === 'fit' ? fitScale(state.devices) : fitHeight(state.devices); }
 function stepZoom(dir) {
   const cur = currentScale();
   const next = dir > 0 ? ZOOMS.find(z => z > cur + 0.01) : [...ZOOMS].reverse().find(z => z < cur - 0.01);

@@ -9,7 +9,7 @@ Chrome extension: see one website on many viewports at once, with synchronized n
 
 ## How it works
 
-- Each device is a real Chrome tab in a separate helper window, controlled with the `chrome.debugger` API (DevTools Protocol).
+- Each device is a real Chrome tab in the wall's own window (a collapsed "Viewport Wall" tab group), controlled with the `chrome.debugger` API (DevTools Protocol). No extra windows are opened.
   `Emulation.setDeviceMetricsOverride` applies width/height/DPR/mobile/touch/user-agent, so CSS media queries see the real emulated viewport.
   This works on sites that block iframes (`X-Frame-Options`, `frame-ancestors`) and on localhost/staging with your existing cookies.
 - The wall shows live captures (`Page.captureScreenshot`) taken at the resolution they are displayed at, so a phone shown at 40% costs a fraction of a full capture. Polling is adaptive: a device whose pixels change is re-captured quickly (active 0.4s, others 0.8s); still content backs off to 1.5s / 4s. Unchanged frames are dropped, so nothing flickers.
@@ -18,7 +18,7 @@ Chrome extension: see one website on many viewports at once, with synchronized n
 - Scroll sync uses percentage position (`scrollTop / (scrollHeight - viewportHeight)`).
 - Everything is local: `chrome.storage.local` for custom devices, sets, preferences, and recent URLs. Nothing is uploaded.
 
-The helper window is created minimized and never focused; if a platform stops minimized tabs from painting, the wall restores it (small, unfocused, bottom-right) automatically. Chrome shows an "is debugging this browser" bar while the wall is open; that is expected. Closing the wall tab closes the helper window.
+Chrome shows an "is debugging this browser" bar while the wall is open; that is expected and cannot be removed by an extension. Closing the wall tab closes the device tabs.
 
 ## UI
 
@@ -47,7 +47,7 @@ Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, i
 
 ```
 manifest.json   MV3 manifest (debugger, tabs, storage, activeTab)
-background.js   opens the wall; closes the helper window when the wall tab closes
+background.js   opens the wall from the toolbar icon; closes the device tab group when the wall tab closes
 core.js         target manager, CDP emulation, capture loop, sync, screenshots, sessions (no DOM)
 wall.js         UI: toolbars, menus, canvas layout, picker, focus/compare/presentation
 wall.html/css   structure + design tokens (dark/light)
