@@ -1,7 +1,7 @@
 // Viewport Wall UI layer. Rendering/emulation lives in core.js; this file owns DOM, layout and interaction.
 import * as C from './core.js';
 import { state, ui, dims } from './core.js';
-import { QUICK_WIDTHS } from './devices.js';
+import { QUICK_WIDTHS, DEVICES } from './devices.js';
 import { icon } from './icons.js';
 import { frameSpec, effective, buildShell, updateHost, osLabel, osIcon } from './frames.js';
 
@@ -19,7 +19,7 @@ const setIcon = (sel, name, size = 16, label = '', chev = false) => { const el =
 setIcon('#back', 'back', 18); setIcon('#fwd', 'forward', 18); setIcon('#reload', 'reload', 17);
 setIcon('#add', 'plus', 18, 'Add Device'); setIcon('#settingsBtn', 'sliders', 18);
 setIcon('#captureBtn', 'camera', 17, 'Screenshot'); setIcon('#recordBtn', 'record', 17, 'Record');
-setIcon('#saveSetBtn', 'save', 14, 'Save set'); setIcon('#bpBtn', 'ruler', 14, 'Breakpoints'); setIcon('#saveSessionBtn', 'clock', 14, 'Save session'); setIcon('#clearBtn', 'trash', 14, 'Clear all');
+setIcon('#setsBtn', 'layers', 14, 'Sets'); setIcon('#saveSetBtn', 'save', 14, 'Save set'); setIcon('#bpBtn', 'ruler', 14, 'Breakpoints'); setIcon('#saveSessionBtn', 'clock', 14, 'Save session'); setIcon('#clearBtn', 'trash', 14, 'Clear all');
 $('.url-lock').innerHTML = icon('lock', 14); $('.url-globe').innerHTML = icon('globe', 15); $('.pal-ic').innerHTML = icon('search', 18); $('#picker [data-act=close]').innerHTML = icon('x');
 const MODE_ICON = { live: 'live', snapshots: 'snapshots', focus: 'focus', compare: 'compare' }, MODE_LABEL = { live: 'Live', snapshots: 'Snapshots', focus: 'Focus', compare: 'Compare' };
 $$('#modes button').forEach(b => { b.innerHTML = icon(MODE_ICON[b.dataset.mode], 16) + MODE_LABEL[b.dataset.mode]; });
@@ -345,11 +345,21 @@ const SET_SHORT = { 'popular-mobile': 'Popular Mobile', apple: 'Apple', android:
 function currentSetId() { const ids = state.devices.map(d => d.presetId).join(','); return C.allSets().find(s => s.deviceIds.join(',') === ids)?.id || null; }
 function renderSets() {
   const cur = currentSetId(); const sets = C.allSets();
-  $('#setChips').innerHTML = sets.map(s => `<button class="chip ${s.id === cur ? 'on' : ''}" data-set="${s.id}" data-tip="${s.deviceIds.length} devices">${icon(SET_ICON[s.id] || 'star', 15)}${esc(SET_SHORT[s.id] || s.name)}</button>`).join('') + `<button class="chip icon-only" data-pop="setsPop" data-tip="Manage sets">${icon('more', 16)}</button>`;
   $('#setsPop').innerHTML = sets.map(s => `<button data-set="${s.id}" class="${s.id === cur ? 'on' : ''}">${icon(SET_ICON[s.id] || 'star', 15)}<span style="flex:1">${esc(s.name)}</span><span class="muted">${s.deviceIds.length}</span>${s.id.startsWith('set-') ? `<span class="icon-btn sm" data-delset="${s.id}" data-tip="Delete set">${icon('trash', 13)}</span>` : ''}</button>`).join('') + '<div class="menu-sep"></div><button data-act="saveset">' + icon('save', 15) + 'Save current as set…</button>';
-  $('#setChips [data-pop]').addEventListener('click', e => { e.stopPropagation(); openPop && openPop.id === 'setsPop' ? hidePops() : showPop('setsPop', e.currentTarget, 'left'); });
+  $('#palSets').innerHTML = sets.map(s => `<button class="chip pset ${s.id === cur ? 'on' : ''}" data-set="${s.id}" data-tip="${s.deviceIds.map(id => C.findPreset(id)?.name).filter(Boolean).join(', ')}">${icon(SET_ICON[s.id] || 'star', 14)}${esc(SET_SHORT[s.id] || s.name)}<span class="n">${s.deviceIds.length}</span></button>`).join('');
 }
-$('#setChips').addEventListener('click', e => { const b = e.target.closest('[data-set]'); if (b) C.applySet(b.dataset.set).then(renderSets); });
+$('#palSets').addEventListener('click', e => { const b = e.target.closest('[data-set]'); if (b) { closePicker(); C.applySet(b.dataset.set).then(renderSets); } });
+$('#setsBtn').addEventListener('click', e => { e.stopPropagation(); showPop('setsPop', $('#devicesBtn'), 'left'); });
+// Tiny silhouette drawn to the device's real proportions. Used in the quick strip and the picker.
+export function mini(d) {
+  const cat = d.category; let w, h;
+  if (cat === 'watch') { w = 16; h = 16 * d.height / d.width; }
+  else if (cat === 'laptop' || cat === 'desktop' || cat === 'tv') { w = 28; h = Math.max(10, 28 * d.height / d.width); }
+  else if (d.width > d.height) { w = 26; h = 26 * d.height / d.width; }
+  else { h = 22; w = 22 * d.width / d.height; }
+  const kind = cat === 'phone' ? 'phone' : cat === 'foldable' ? (d.width > d.height ? 'fold' : 'phone') : cat === 'tablet' ? 'tablet' : cat === 'laptop' ? 'laptop' : cat === 'desktop' ? 'desktop' : cat === 'tv' ? 'tv' : cat === 'watch' ? 'watch' : 'bp';
+  return `<i class="mini ${kind}" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px"></i>`;
+}
 $('#setsPop').addEventListener('click', e => {
   const del = e.target.closest('[data-delset]'); if (del) { e.stopPropagation(); if (confirm('Delete this set?')) { C.deleteSet(del.dataset.delset); renderSets(); hidePops(); } return; }
   if (e.target.closest('[data-act=saveset]')) { saveCurrentSet(); return; }
@@ -435,14 +445,14 @@ function togglePresent(on = !document.body.classList.contains('present')) {
 const picked = new Set(); let filter = null; let kbIndex = -1;
 function openPicker() { picked.clear(); filter = null; $('#search').value = ''; renderPicker(); $('#picker').hidden = false; $('#search').focus(); }
 function closePicker() { $('#picker').hidden = true; }
-const CATS = [['favorites', 'star', 'Favorites'], ['Apple', 'apple', 'Apple'], ['Samsung', 'samsung', 'Samsung'], ['Google', 'google', 'Google'], ['phone', 'phone', 'Phones'], ['foldable', 'phone', 'Foldables'], ['tablet', 'tablet', 'Tablets'], ['laptop', 'monitor', 'PC / Mac'], ['watch', 'watch', 'Watches'], ['tv', 'tv', 'TVs'], ['breakpoint', 'ruler', 'Breakpoints'], ['Custom', 'pencil', 'Custom']];
+const CATS = [['phone', 'phone', 'Phone'], ['foldable', 'phone', 'Fold'], ['tablet', 'tablet', 'Tablet'], ['laptop', 'monitor', 'PC'], ['watch', 'watch', 'Watch'], ['tv', 'tv', 'TV'], ['breakpoint', 'ruler', 'Widths'], ['favorites', 'star', 'Favorites'], ['Custom', 'pencil', 'Custom']];
 function matches(d) { if (!filter) return true; if (filter === 'favorites') return C.favorites.has(d.id); if (filter === 'laptop') return d.category === 'laptop' || d.category === 'desktop'; return d.brand === filter || d.category === filter; }
 function renderPicker() {
   const q = $('#search').value.trim().toLowerCase(); const all = C.allPresets();
   const list = all.filter(d => matches(d) && (!q || `${d.brand} ${d.name} ${d.width} ${d.height} ${d.width}px`.toLowerCase().includes(q)));
   $('#filters').innerHTML = CATS.map(([k, ic, l]) => `<button data-f="${k}" class="${filter === k ? 'on' : ''}">${icon(ic, 13)}${l}</button>`).join('');
-  $('#quickWidths').innerHTML = QUICK_WIDTHS.map(w => `<span class="chip ${picked.has('bp-' + w) ? 'on' : ''}" data-pick="bp-${w}">${w}</span>`).join('');
-  const row = d => `<div class="dev ${picked.has(d.id) ? 'on' : ''}" data-pick="${d.id}"><span class="box">${icon('check', 12)}</span><span class="dn">${esc(d.name)}</span><span class="dm">${d.width}×${d.height} · ${d.dpr}x</span><button class="fav ${C.favorites.has(d.id) ? 'on' : ''}" data-fav="${d.id}" data-tip="Favorite">${icon('star', 14)}</button>${d.custom ? `<button class="del" data-del="${d.id}" data-tip="Delete custom device">${icon('trash', 14)}</button>` : ''}</div>`;
+  $('#wTicks').innerHTML = QUICK_WIDTHS.map(w => `<button type="button" data-w="${w}">${w}</button>`).join('');
+  const row = d => `<div class="dev ${picked.has(d.id) ? 'on' : ''}" data-pick="${d.id}"><span class="box">${icon('check', 12)}</span><span class="sil">${mini(d)}</span><span class="dn">${esc(d.name)}</span><span class="dm">${d.width}×${d.height} · ${d.dpr}x</span><button class="fav ${C.favorites.has(d.id) ? 'on' : ''}" data-fav="${d.id}" data-tip="Favorite">${icon('star', 14)}</button>${d.custom ? `<button class="del" data-del="${d.id}" data-tip="Delete custom device">${icon('trash', 14)}</button>` : ''}</div>`;
   const groups = {};
   if (!q && !filter) { const pop = all.filter(d => (d.tags || []).includes('popular') && d.category !== 'breakpoint'); if (pop.length) groups.Popular = pop; }
   for (const d of list) if (d.category !== 'breakpoint' || q || filter === 'breakpoint') (groups[d.brand] ||= []).push(d);
@@ -462,6 +472,14 @@ $('#picker').addEventListener('click', e => {
 });
 function commitPick() { const ps = [...picked].map(C.findPreset).filter(Boolean); closePicker(); if (ps.length) C.addDevices(ps); }
 $('#search').addEventListener('input', renderPicker);
+// Width slider: drag or type any width, add it as a breakpoint device.
+const wRange = $('#wRange'), wNum = $('#wNum');
+wRange.addEventListener('input', () => { wNum.value = wRange.value; });
+wNum.addEventListener('input', () => { const v = Math.max(100, Math.min(4000, +wNum.value || 0)); wRange.value = Math.max(240, Math.min(2560, v)); });
+$('#wTicks').addEventListener('click', e => { const b = e.target.closest('[data-w]'); if (b) { wRange.value = wNum.value = b.dataset.w; } });
+function addWidth() { const w = Math.max(100, Math.min(4000, Math.round(+wNum.value || 0))); if (!w) return; C.addDevices([C.widthPreset(w)]); toast(`${w}px added`); }
+$('#wAdd').addEventListener('click', addWidth);
+wNum.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addWidth(); } });
 $('#search').addEventListener('keydown', e => {
   const rows = $$('#groups .dev');
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); kbIndex = Math.max(0, Math.min(rows.length - 1, kbIndex + (e.key === 'ArrowDown' ? 1 : -1))); rows.forEach((r, i) => r.classList.toggle('kb', i === kbIndex)); rows[kbIndex]?.scrollIntoView({ block: 'nearest' }); }

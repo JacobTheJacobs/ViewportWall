@@ -18,19 +18,15 @@
       <span class="url-globe"></span>
     </form>
   </div>
-  <button class="btn primary lg" id="add" data-tip="Add devices (A)"></button>
-  <button class="btn lg icon-only" id="settingsBtn" data-pop="settingsPop" data-tip="Settings"></button>
-</header>
-
-<div id="second" class="bar bar-second">
-  <div class="chips" id="setChips"></div>
   <div class="tools">
     <button class="btn dd" id="viewBtn" data-pop="viewPop" data-tip="Layout, zoom and frame style"></button>
     <label class="switch big" data-tip="Realistic device frames"><input type="checkbox" id="framesToggle"><i></i><span>Frames</span></label>
     <button class="btn" id="captureBtn" data-pop="capturePop" data-tip="Capture screenshots"></button>
     <button class="btn" id="recordBtn" data-tip="Record the wall as a video"></button>
   </div>
-</div>
+  <button class="btn primary lg" id="add" data-tip="Add devices (A)"></button>
+  <button class="btn lg icon-only" id="settingsBtn" data-pop="settingsPop" data-tip="Settings"></button>
+</header>
 
 <main id="canvas" tabindex="-1">
   <div id="wall"></div>
@@ -94,6 +90,7 @@
   <div id="devList" class="devlist-pop"></div>
   <div class="pop-hint">Drag to reorder · click to activate</div>
   <div class="pop-acts">
+    <button class="btn sm" id="setsBtn" data-tip="Device sets"></button>
     <button class="btn sm" id="saveSetBtn" data-tip="Save these devices as a set"></button>
     <button class="btn sm" id="bpBtn" data-tip="Add breakpoint widths"></button>
     <button class="btn sm" id="saveSessionBtn" data-tip="Save URL, devices and layout"></button>
@@ -139,7 +136,11 @@
     </div>
     <div class="pal-filters" id="filters"></div>
     <div class="pal-body">
-      <section><div class="pal-sub">Quick widths</div><div class="chips2" id="quickWidths"></div></section>
+      <section><div class="pal-sub">Sets</div><div class="pal-sets" id="palSets"></div></section>
+      <section class="width-sec"><div class="pal-sub">Any width</div>
+        <div class="wslider"><input type="range" id="wRange" min="240" max="2560" step="1" value="390"><input type="number" id="wNum" min="100" max="4000" value="390"><span class="muted">px</span><button class="btn sm primary" id="wAdd">Add width</button></div>
+        <div class="wticks" id="wTicks"></div>
+      </section>
       <div id="groups"></div>
       <section class="custom-sec">
         <div class="pal-sub">Custom device</div>
