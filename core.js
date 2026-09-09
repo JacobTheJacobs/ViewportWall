@@ -76,6 +76,7 @@ export const dims = i => i.orientation === 'portrait' ? [i.baseW, i.baseH] : [i.
 // Device tabs live in the wall's own window as background tabs inside a collapsed "Viewport Wall" tab group.
 // Nothing else opens: no helper window, no focus changes. Background tabs keep rendering while the debugger is attached.
 async function ensureGroup(tabId) {
+  if (!chrome.tabGroups || !chrome.tabs.group) return;
   try {
     let groupId = state.groupId;
     if (groupId != null) { try { await chrome.tabGroups.get(groupId); } catch { groupId = null; } }
@@ -149,7 +150,7 @@ export async function canFrame(url) {
 }
 export async function renderModeFor(url) {
   const m = state.layout.render || 'auto';
-  if (m === 'cdp') return 'cdp';
+  if (m === 'cdp' || !chrome.scripting || !chrome.webNavigation) return 'cdp';   // old manifest still loaded: no iframe mode
   if (m === 'iframe') return 'iframe';
   return isLocalUrl(url) && await canFrame(url) ? 'iframe' : 'cdp';
 }
@@ -157,7 +158,7 @@ let wallTabId = null; chrome.tabs.getCurrent().then(t => { wallTabId = t && t.id
 // Run code inside a device page, whichever way it is hosted.
 async function evalIn(inst, expression, fn, args = []) {
   if (inst.tabId != null) return (await send(inst.tabId, 'Runtime.evaluate', { expression, returnByValue: true })).result.value;
-  if (inst.frameId != null && wallTabId != null) { const r = await chrome.scripting.executeScript({ target: { tabId: wallTabId, frameIds: [inst.frameId] }, func: fn, args }); return r && r[0] && r[0].result; }
+  if (inst.frameId != null && wallTabId != null && chrome.scripting) { const r = await chrome.scripting.executeScript({ target: { tabId: wallTabId, frameIds: [inst.frameId] }, func: fn, args }); return r && r[0] && r[0].result; }
 }
 const hosted = d => d.tabId != null || d.frameId != null;
 
@@ -235,13 +236,13 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   handleReport(inst, msg);
 });
 // Inject the agent whenever an iframe device (re)loads; SPA route changes come from webNavigation since the content script's world cannot see history.pushState.
-chrome.webNavigation.onCompleted.addListener(d => {
+chrome.webNavigation?.onCompleted.addListener(d => {
   if (wallTabId == null || d.tabId !== wallTabId || d.frameId === 0 || !isWebUrl(d.url)) return;
-  chrome.scripting.executeScript({ target: { tabId: wallTabId, frameIds: [d.frameId] }, files: ['agent.js'] }).catch(() => {});
+  chrome.scripting?.executeScript({ target: { tabId: wallTabId, frameIds: [d.frameId] }, files: ['agent.js'] }).catch(() => {});
 });
 const spaNav = d => { if (d.tabId !== wallTabId || d.frameId === 0) return; const inst = state.devices.find(x => x.frameId === d.frameId); if (inst) handleReport(inst, { type: 'nav', url: d.url }); };
-chrome.webNavigation.onHistoryStateUpdated.addListener(spaNav);
-chrome.webNavigation.onReferenceFragmentUpdated.addListener(spaNav);
+chrome.webNavigation?.onHistoryStateUpdated.addListener(spaNav);
+chrome.webNavigation?.onReferenceFragmentUpdated.addListener(spaNav);
 chrome.debugger.onDetach.addListener((src, reason) => {
   const inst = state.devices.find(d => d.tabId === src.tabId);
   if (!inst) return;
