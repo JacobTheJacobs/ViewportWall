@@ -7,7 +7,7 @@ export const state = {
   url: '',
   devices: [],
   activeId: null,
-  sync: { navigation: true, scroll: true, clicks: false, input: false, reload: true },
+  sync: { navigation: true, scroll: true, clicks: true, input: true, reload: true },   // always on; the wall is one page on many screens
   layout: { type: 'auto', zoom: 'fith', frames: 'realistic', frameStyle: 'realistic', browser: 'auto', theme: 'dark', mobileUA: false },
   frozen: false,
   groupId: null,
@@ -87,7 +87,7 @@ export async function loadPrefs() {
   sessions = p.sessions || []; favorites = new Set(p.favorites || []);
   customDevices = p.customDevices || [];
   savedSets = p.savedSets || [];
-  if (p.prefs) { Object.assign(state.sync, p.prefs.sync || {}); Object.assign(state.layout, p.prefs.layout || {}); }
+  if (p.prefs) Object.assign(state.layout, p.prefs.layout || {});
   if (!['auto', 'horizontal', 'grid', 'free', 'focus'].includes(state.layout.type)) state.layout.type = 'auto';
   if (typeof state.layout.frames === 'boolean' || !p.prefs?.uiVersion) { state.layout.frames = 'realistic'; state.layout.browser = 'auto'; }
   if ((p.prefs?.uiVersion || 0) < 3) { state.layout.zoom = 'fith'; state.layout.type = 'auto'; }
@@ -566,7 +566,7 @@ export function deleteSession(id) { sessions = sessions.filter(s => s.id !== id)
 export async function loadSession(id) {
   const x = sessions.find(v => v.id === id); if (!x) return null;
   await clearDevices();
-  Object.assign(state.layout, x.layout); Object.assign(state.sync, x.sync);
+  Object.assign(state.layout, x.layout);
   state.url = x.url; ui.setUrl(x.url);
   await addDevices(x.devices);
   return x;

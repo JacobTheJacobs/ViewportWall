@@ -80,7 +80,7 @@ function renderPanelState(d) {
   el.querySelector('.dpr').textContent = `DPR ${d.dpr}`;
   el.querySelector('.os').textContent = osLabel(d);
   el.className = `panel ${d.status}${d.paused ? ' paused' : ''}${state.activeId === d.instanceId ? ' active' : ''}${el.classList.contains('narrow') ? ' narrow' : ''}`;
-  el.querySelector('.state').innerHTML = '<span></span>'; el.querySelector('.state span').textContent = d.paused ? 'Paused' : d.status === 'error' ? (d.errorTitle || 'Error') : d.status === 'loading' ? 'Loading' : state.activeId === d.instanceId ? 'Active' : (state.sync.scroll || state.sync.navigation) ? 'Synced' : 'Ready';
+  el.querySelector('.state').innerHTML = '<span></span>'; el.querySelector('.state span').textContent = d.paused ? 'Paused' : d.status === 'error' ? (d.errorTitle || 'Error') : d.status === 'loading' ? 'Loading' : state.activeId === d.instanceId ? 'Active' : 'Synced';
   if (d.status === 'error') { el.querySelector('.ov-title').textContent = d.errorTitle || "Couldn't load page"; el.querySelector('.ov-msg').textContent = d.errorKind === 'detached' ? d.errorMsg : `${hostOf(d.url || state.url)} ${d.errorMsg}`; }
   el.querySelector('.ov-text').textContent = `Loading ${hostOf(d.url || state.url)}…`;
   const badge = el.querySelector('.issue-badge'); const n = (d.issues || []).length;
@@ -234,9 +234,6 @@ $$('[data-pop]').forEach(b => b.addEventListener('click', e => {
   showPop(id, b, b.closest('.bar-bottom') ? 'left' : 'right');
 }));
 
-// sync toggles (inline)
-function syncSync() { $$('#syncGroup [data-sync]').forEach(i => { i.checked = !!state.sync[i.dataset.sync]; }); }
-$('#syncGroup').addEventListener('change', e => { const k = e.target.dataset.sync; if (!k) return; state.sync[k] = e.target.checked; C.savePrefs(); for (const d of state.devices) renderPanelState(d); });
 
 // layout / zoom / frames
 const LAYOUTS = { auto: ['wand', 'Auto'], horizontal: ['rows', 'Row'], grid: ['grid', 'Grid'], free: ['layout', 'Free'] };
@@ -378,7 +375,7 @@ function renderStatus() {
   $('#empty').hidden = n > 0;
 }
 function syncUIFromState() {
-  $('#framesToggle').checked = state.layout.frames !== 'none'; setSeg('frameSeg', state.layout.frameStyle || 'realistic'); setSeg('browserSeg', state.layout.browser); applyTheme(); syncSync(); renderViewBtn();
+  $('#framesToggle').checked = state.layout.frames !== 'none'; setSeg('frameSeg', state.layout.frameStyle || 'realistic'); setSeg('browserSeg', state.layout.browser); applyTheme(); renderViewBtn();
   $('#mobileUA').checked = !!state.layout.mobileUA; $('#url').value = state.url;
   rebuildAll(); renderSets(); renderDeviceList(); renderStatus();
 }
@@ -495,8 +492,6 @@ document.addEventListener('keydown', e => {
   if (k === 'a' || k === 'A') openPicker();
   else if (k === 'r') C.reloadAll(false);
   else if (k === 'R' && e.shiftKey) state.devices.forEach(C.rotate);
-  else if (k === 's' || k === 'S') { state.sync.scroll = !state.sync.scroll; C.savePrefs(); syncSync(); toast(`Scroll sync ${state.sync.scroll ? 'on' : 'off'}`); }
-  else if (k === 'n' || k === 'N') { state.sync.navigation = !state.sync.navigation; C.savePrefs(); syncSync(); toast(`Navigation sync ${state.sync.navigation ? 'on' : 'off'}`); }
   else if (k === 'f' || k === 'F') togglePresent();
   else if (k === '0') { state.layout.zoom = state.layout.zoom === 'fith' ? 'fit' : 'fith'; relayout(); C.savePrefs(); }
   else if (/^[1-9]$/.test(k)) { const d = state.devices[+k - 1]; if (d) C.setActive(d.instanceId); }

@@ -22,7 +22,7 @@ Chrome shows an "is debugging this browser" bar while the wall is open; that is 
 
 ## UI
 
-Two-row header: brand, pill URL bar with back/forward/reload, inline Sync switches (Navigation, Scroll, Clicks, Input), Add Device, Settings (theme, mobile user agent, auto reload, QA report, about). Second row: device-set chips (Essential, Mobile + Tablet, Breakpoints, Popular Mobile, Apple, Android, saved sets, manage), one View menu (layout, zoom, frame style, browser UI, rotate all, presentation), Frames switch, Screenshot menu, Record (WebM of the wall). Footer: a Devices hub (list, save set, breakpoints, save session, sessions, clear all), Live / Snapshots / Focus / Compare modes, performance. Each device label has rotate, close and one actions menu (reload, rotate, pause, focus, capture, compare, note, edit, duplicate, network, CPU, remove); double-click a device to focus it. Inter font bundled locally; dark and light themes.
+Two-row header: brand, pill URL bar with back/forward/reload, Add Device, Settings (theme, mobile user agent, auto reload, QA report, about). Second row: device-set chips (Essential, Mobile + Tablet, Breakpoints, Popular Mobile, Apple, Android, saved sets, manage), one View menu (layout, zoom, frame style, browser UI, rotate all, presentation), Frames switch, Screenshot menu, Record (WebM of the wall). Footer: a Devices hub (list, save set, breakpoints, save session, sessions, clear all), Live / Snapshots / Focus / Compare modes, performance. Each device label has rotate, close and one actions menu (reload, rotate, pause, focus, capture, compare, note, edit, duplicate, network, CPU, remove); double-click a device to focus it. Inter font bundled locally; dark and light themes.
 
 Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, iOS status bar, Safari bar, home indicator), iPhone classic (bezels + home button), Pixel / Galaxy (punch-hole, Android status bar, Chrome bar, gesture bar), iPad, desktop browser window, and a minimal rounded frame for raw breakpoints. All bars sit outside the emulated viewport, so CSS media queries always see the exact device width.
 
@@ -30,10 +30,10 @@ Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, i
 
 - Wall: auto grid, horizontal, vertical, focus + comparisons; fit or fixed zoom; frames toggle; presentation mode; drag to reorder; double-click to focus one device.
 - Devices: 37 named presets + raw breakpoints, custom devices, favorites, saved sets, duplicate, rotate (one/all), pause, drag the right edge of a panel to resize its width live.
-- Sync: navigation (full loads + SPA routes), scroll (percentage), clicks (matched by id > data-testid > href > aria-label > text, off by default), input (mirrors typed text into the matching field, off by default).
+- Sync is always on: navigation (full loads + SPA routes), scroll (percentage), clicks (matched by id > data-testid > href > aria-label > text), input (mirrors typed text into the matching field).
 - Breakpoints: detect min/max-width media queries in the page's stylesheets, add them all, or add width-1 / width / width+1 boundary tests.
 - Checks (per device, automatic): horizontal overflow, clipped text in buttons/headings/links, fixed elements exceeding the viewport, images exceeding the viewport. Issues appear on the panel badge and in the issues bar.
-- QA: per-device notes, Markdown report to clipboard, saved sessions (URL, devices, layout, sync, notes).
+- QA: per-device notes, Markdown report to clipboard, saved sessions (URL, devices, layout, notes).
 - Screenshots: one device, full page, every device, whole wall with metadata footer (Screenshot menu or the device menu).
 - Reload: all, one, hard (Shift+click), auto reload interval.
 - Panel menu (⋯): per-device zoom (also Ctrl+wheel), network profile (Fast 4G / Slow 4G / 3G / Offline), CPU slowdown, add to compare (two devices → side-by-side image), edit device.
@@ -41,7 +41,7 @@ Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, i
 
 ## Shortcuts
 
-`A` add device · `R` reload all · `Shift+R` rotate all · `S` scroll sync · `N` navigation sync · `F` presentation · `1–9` activate device · `+/-` zoom · `Esc` exit · double-click a panel to focus it.
+`A` add device · `R` reload all · `Shift+R` rotate all · `F` presentation · `1–9` activate device · `+/-` zoom · `Esc` exit · double-click a panel to focus it.
 
 ## Layout
 

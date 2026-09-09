@@ -76,13 +76,11 @@ button{cursor:pointer}
 .brand-text{display:flex;flex-direction:column;line-height:1.15}
 .brand-name{font-weight:700;font-size:20px;letter-spacing:-.02em}
 .brand-tag{font-size:12.5px;color:var(--text-muted)}
-.urlgroup{flex:1;min-width:260px;max-width:600px;display:flex;align-items:center;gap:2px;height:46px;padding:0 6px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--bg-elevated)}
+.urlgroup{flex:1;min-width:260px;max-width:900px;display:flex;align-items:center;gap:2px;height:46px;padding:0 6px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--bg-elevated)}
 .urlfield{flex:1;display:flex;align-items:center;height:36px;margin-left:4px;border-radius:9px;background:var(--bg-input);border:1px solid var(--border-subtle);transition:border-color var(--t-fast),box-shadow var(--t-fast)}
 .urlfield:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .url-lock,.url-globe{display:flex;color:var(--text-muted);padding:0 10px}
 #url{flex:1;min-width:0;border:0;background:transparent;height:100%;font-size:15px;color:var(--text-primary);outline:none}
-.syncgroup{display:flex;align-items:center;gap:14px;flex:none}
-.sync-lbl{color:var(--text-secondary);font-weight:500}
 .chips{display:flex;gap:8px;align-items:center;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;padding-right:20px;mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
 .chips::-webkit-scrollbar{display:none}
 .chip{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;border:1px solid var(--border-subtle);background:var(--bg-elevated);color:var(--text-primary);white-space:nowrap;font-weight:500;flex:none;transition:background var(--t-fast),border-color var(--t-fast)}
@@ -329,4 +327,4 @@ body.present .present-title{display:block!important;text-align:center;padding:36
 .present-title p{margin:4px 0 0;color:var(--text-muted)}
 @media (max-width:1500px){.brand-tag{display:none}.brand-name{font-size:17px}.bar-top{gap:12px}.switch span{font-size:13px}}
 @media (max-width:1400px){#captureBtn .lbl,#recordBtn .lbl{display:none}}
-@media (max-width:1250px){.syncgroup .sync-lbl{display:none}.switch.big span,.btn.dd .lbl{display:none}.urlgroup{min-width:200px}}
+@media (max-width:1250px){.switch.big span,.btn.dd .lbl{display:none}.urlgroup{min-width:200px}}
