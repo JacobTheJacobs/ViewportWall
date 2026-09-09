@@ -20,6 +20,12 @@ Chrome extension: see one website on many viewports at once, with synchronized n
 
 Chrome shows an "is debugging this browser" bar on the helper window; that is expected. Closing the wall tab closes the helper window.
 
+## UI
+
+Single compact toolbar (URL, Sync popover, Breakpoints, Capture, + Device, More), collapsible device sidebar (sets + current devices), Figma-like canvas with Auto / Row / Grid / Free layouts, fit-to-screen scaling, status bar with Frames (Realistic / Minimal / None) and Browser UI (Auto / On / Off) toggles, dark and light themes.
+
+Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, iOS status bar, Safari bar, home indicator), iPhone classic (bezels + home button), Pixel / Galaxy (punch-hole, Android status bar, Chrome bar, gesture bar), iPad, desktop browser window, and a minimal rounded frame for raw breakpoints. All bars sit outside the emulated viewport, so CSS media queries always see the exact device width.
+
 ## Features
 
 - Wall: auto grid, horizontal, vertical, focus + comparisons; fit or fixed zoom; frames toggle; presentation mode; drag to reorder; double-click to focus one device.
@@ -43,6 +49,10 @@ Chrome shows an "is debugging this browser" bar on the helper window; that is ex
 manifest.json   MV3 manifest (debugger, tabs, storage, activeTab)
 background.js   opens the wall; closes the helper window when the wall tab closes
 popup.*         launcher: current URL + quick sets
-wall.*          workspace: target manager, emulation, capture loop, sync, picker, screenshots
+core.js         target manager, CDP emulation, capture loop, sync, screenshots, sessions (no DOM)
+wall.js         UI: toolbar, sidebar, canvas layout, picker, popovers, focus/presentation
+wall.html/css   structure + design tokens (dark/light)
+frames.js       data-driven device shells, status bars, browser bars, cutouts
+icons.js        inline SVG icon set
 devices.js      device library + built-in sets (data only; add a device = add a line)
 ```
