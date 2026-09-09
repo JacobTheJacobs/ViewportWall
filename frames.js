@@ -99,16 +99,18 @@ function statusBar(kind, w) {
 }
 function browserBar(kind, url) {
   const h = host(url) || 'about:blank';
-  if (kind === 'safari') return `<div class="bb bb-safari" style="height:${BAR.safari}px"><span class="aa">AA</span><span class="pill">${icon('lock', 10)}<span>${h}</span></span><span class="rl">${icon('reload', 13)}</span></div>`;
-  if (kind === 'safari-tablet') return `<div class="bb bb-safari-tablet" style="height:${BAR['safari-tablet']}px"><span class="nav">${icon('back', 14)}${icon('forward', 14)}</span><span class="pill">${icon('lock', 10)}<span>${h}</span></span><span class="nav">${icon('share', 14)}${icon('plus', 14)}${icon('tabs', 14)}</span></div>`;
-  if (kind === 'chrome') return `<div class="bb bb-chrome" style="height:${BAR.chrome}px"><span class="nav">${icon('home', 15)}</span><span class="pill">${icon('lock', 11)}<span>${h}</span></span><span class="nav">${icon('tabs', 15)}${icon('more', 15, 'v')}</span></div>`;
-  if (kind === 'desktop') return `<div class="bb bb-desktop" style="height:${BAR.desktop}px"><span class="dots"><i></i><i></i><i></i></span><span class="nav">${icon('back', 13)}${icon('forward', 13)}${icon('reload', 13)}</span><span class="pill">${icon('lock', 10)}<span>${url || ''}</span></span></div>`;
+  const nav = (k, n, cls) => `<span class="nv" data-nav="${k}">${icon(n, cls === undefined ? 14 : cls)}</span>`;
+  if (kind === 'safari') return `<div class="bb bb-safari" style="height:${BAR.safari}px"><span class="aa">AA</span><span class="pill" data-nav="url">${icon('lock', 10)}<span>${h}</span></span><span class="rl" data-nav="reload">${icon('reload', 13)}</span></div>`;
+  if (kind === 'safari-tablet') return `<div class="bb bb-safari-tablet" style="height:${BAR['safari-tablet']}px"><span class="nav">${nav('back', 'back')}${nav('forward', 'forward')}</span><span class="pill" data-nav="url">${icon('lock', 10)}<span>${h}</span></span><span class="nav">${icon('share', 14)}${icon('plus', 14)}${icon('tabs', 14)}</span></div>`;
+  if (kind === 'chrome') return `<div class="bb bb-chrome" style="height:${BAR.chrome}px"><span class="nav">${nav('home', 'home', 15)}</span><span class="pill" data-nav="url">${icon('lock', 11)}<span>${h}</span></span><span class="nav">${nav('reload', 'reload', 15)}${icon('more', 15, 'v')}</span></div>`;
+  if (kind === 'desktop') return `<div class="bb bb-desktop" style="height:${BAR.desktop}px"><span class="dots"><i></i><i></i><i></i></span><span class="nav">${nav('back', 'back', 13)}${nav('forward', 'forward', 13)}${nav('reload', 'reload', 13)}</span><span class="pill" data-nav="url">${icon('lock', 10)}<span>${url || ''}</span></span></div>`;
   return '';
 }
 function navBar(kind) {
-  if (kind === 'ios-toolbar') return `<div class="nb nb-safari" style="height:${BAR['ios-toolbar']}px"><div class="tools">${icon('back', 18)}${icon('forward', 18)}${icon('share', 18)}${icon('book', 18)}${icon('tabs', 18)}</div><i></i></div>`;
-  if (kind === 'ios-toolbar-classic') return `<div class="nb nb-safari classic" style="height:${BAR['ios-toolbar-classic']}px"><div class="tools">${icon('back', 18)}${icon('forward', 18)}${icon('share', 18)}${icon('book', 18)}${icon('tabs', 18)}</div></div>`;
-  if (kind === 'android-buttons') return `<div class="nb nb-android-btns" style="height:${BAR['android-buttons']}px">${icon('triangle', 16)}${icon('circle', 15)}${icon('square', 14)}</div>`;
+  const nav = (k, n, s) => `<span class="nv" data-nav="${k}">${icon(n, s)}</span>`;
+  if (kind === 'ios-toolbar') return `<div class="nb nb-safari" style="height:${BAR['ios-toolbar']}px"><div class="tools">${nav('back', 'back', 18)}${nav('forward', 'forward', 18)}${icon('share', 18)}${icon('book', 18)}${icon('tabs', 18)}</div><i></i></div>`;
+  if (kind === 'ios-toolbar-classic') return `<div class="nb nb-safari classic" style="height:${BAR['ios-toolbar-classic']}px"><div class="tools">${nav('back', 'back', 18)}${nav('forward', 'forward', 18)}${icon('share', 18)}${icon('book', 18)}${icon('tabs', 18)}</div></div>`;
+  if (kind === 'android-buttons') return `<div class="nb nb-android-btns" style="height:${BAR['android-buttons']}px">${nav('back', 'triangle', 16)}${nav('home', 'circle', 15)}${icon('square', 14)}</div>`;
   if (kind === 'ios-home') return `<div class="nb nb-ios" style="height:${BAR['ios-home']}px"><i></i></div>`;
   if (kind === 'android-gesture') return `<div class="nb nb-android" style="height:${BAR['android-gesture']}px"><i></i></div>`;
   return '';

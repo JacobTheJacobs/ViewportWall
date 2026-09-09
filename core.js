@@ -402,6 +402,7 @@ function pushRecent(url) {
     chrome.storage.local.set({ recentUrls }); ui.renderRecent(recentUrls);
   });
 }
+export function navHistoryOne(inst, dir) { if (inst.tabId != null) send(inst.tabId, 'Runtime.evaluate', { expression: dir > 0 ? 'history.forward()' : 'history.back()' }).catch(() => {}); }
 export function navHistory(dir) {
   for (const d of state.devices) if (d.tabId != null) send(d.tabId, 'Runtime.evaluate', { expression: dir > 0 ? 'history.forward()' : 'history.back()' }).catch(() => {});
 }

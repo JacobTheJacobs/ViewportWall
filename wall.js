@@ -9,7 +9,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const wallEl = $('#wall'), canvasEl = $('#canvas');
 const panels = new Map();
-const LABEL_H = 64, GAP_X = 32, GAP_Y = 36, PAD = 28;
+const LABEL_H = 64, GAP_X = 14, GAP_Y = 24, PAD = 16;
 let mode = 'live';            // live | snapshots | focus | compare
 let focusIds = [];            // devices shown large in focus/compare
 let compareSel = new Set();
@@ -55,6 +55,12 @@ function mount(d) {
     else if (a === 'retry') C.retry(d);
   });
   el.addEventListener('dblclick', e => { if (e.target.closest('.viewport')) setMode(mode === 'focus' ? 'live' : 'focus', d.instanceId); });
+  // The drawn browser bars are live: back / forward / reload / home act on this device, the URL pill focuses the wall's URL bar.
+  el.addEventListener('click', e => {
+    const n = e.target.closest('[data-nav]'); if (!n) return; e.stopPropagation(); const k = n.dataset.nav;
+    if (k === 'back') C.navHistoryOne(d, -1); else if (k === 'forward') C.navHistoryOne(d, 1); else if (k === 'reload') C.reloadOne(d);
+    else if (k === 'home') C.navHistoryOne(d, -1); else if (k === 'url') { $('#url').focus(); $('#url').select(); }
+  });
   C.wireInput(d, el.querySelector('.viewport'));
   wireDrag(d, el); wireResize(d, el); visObs.observe(el);
   buildFrame(d); renderPanelState(d);
@@ -117,7 +123,7 @@ function relayout() {
     const [ow, oh] = d.outer;
     const dev = el.querySelector('.device'); dev.style.width = Math.round(ow * s) + 'px'; dev.style.height = Math.round(oh * s) + 'px';
     el.querySelector('.shell').style.transform = `scale(${s})`;
-    el.style.width = Math.max(200, Math.round(ow * s)) + 'px'; el.classList.toggle('narrow', ow * s < 300);
+    el.style.width = Math.max(160, Math.round(ow * s)) + 'px'; el.classList.toggle('narrow', ow * s < 300);
     if (type === 'free' && !big) { if (d.fx == null) { d.fx = 40 + (list.indexOf(d) % 4) * 340; d.fy = 30 + Math.floor(list.indexOf(d) / 4) * 720; } el.style.left = d.fx + 'px'; el.style.top = d.fy + 'px'; } else { el.style.left = el.style.top = ''; }
   }
   renderViewBtn(base); renderThumbs();
