@@ -33,6 +33,7 @@ Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, i
 - Sync is always on: navigation (full loads + SPA routes), scroll (percentage), clicks (matched by id > data-testid > href > aria-label > text), input (mirrors typed text into the matching field).
 - Breakpoints: detect min/max-width media queries in the page's stylesheets, add them all, or add width-1 / width / width+1 boundary tests.
 - Checks (per device, automatic): horizontal overflow, clipped text in buttons/headings/links, fixed elements exceeding the viewport, images exceeding the viewport. Issues appear on the panel badge and in the issues bar.
+- Device library: iPhones, Pixels, Galaxies, Xiaomi, OnePlus, foldables and flip phones (Z Fold / Z Flip / Razr, open and cover screens), iPads, Galaxy Tab, Pixel Tablet, Surface Pro, MacBooks, iMac, Surface Laptop, Windows laptops, 1080p / 1440p / 4K / ultrawide desktops, kiosk portrait, Apple Watch, Pixel Watch, Galaxy Watch, TVs (1080p, 4K, Apple TV, Google TV, Samsung), plus raw breakpoints and custom sizes. Sets: Popular Mobile, Apple, Android, Tablets, Desktops, Foldables, Watches + TV, All Screens, Essential, Mobile + Tablet, Breakpoints, Stress Test.
 - QA: per-device notes, Markdown report to clipboard, saved sessions (URL, devices, layout, notes).
 - Screenshots: one device, full page, every device, whole wall with metadata footer (Screenshot menu or the device menu).
 - Reload: all, one, hard (Shift+click), auto reload interval.

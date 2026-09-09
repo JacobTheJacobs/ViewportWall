@@ -114,7 +114,7 @@ function relayout() {
     const el = panels.get(d.instanceId);
     const hidden = big && !focusIds.includes(d.instanceId); el.style.display = hidden ? 'none' : '';
     if (hidden) continue;
-    const s = big ? base : base * (d.zoom || 1); d.scale = s;
+    let s = big ? base : base * (d.zoom || 1); if (fitH && BIG.has(d.category)) s = Math.min(s, fitHeight([d]) * (d.zoom || 1)); d.scale = s;
     const [ow, oh] = d.outer;
     const dev = el.querySelector('.device'); dev.style.width = Math.round(ow * s) + 'px'; dev.style.height = Math.round(oh * s) + 'px';
     el.querySelector('.shell').style.transform = `scale(${s})`;
@@ -139,7 +139,9 @@ function fitScale(list) {
   }
   return clamp(best);
 }
-function fitHeight(list) { if (!list.length) return 1; const H = canvasEl.clientHeight - 18 - 22 - 12 - LABEL_H; return clamp(H / Math.max(...list.map(d => d.outer[1]))); }
+// Handhelds share one scale (real proportions); laptops, desktops and TVs are each shrunk to fit the height on their own.
+const BIG = new Set(['laptop', 'desktop', 'tv']);
+function fitHeight(list) { if (!list.length) return 1; const H = canvasEl.clientHeight - 18 - 22 - 12 - LABEL_H; const ref = list.filter(d => !BIG.has(d.category)); return clamp(H / Math.max(...(ref.length ? ref : list).map(d => d.outer[1]))); }
 function fitMany(list) {
   if (!list.length) return 1;
   const W = canvasEl.clientWidth - PAD * 2 - (list.length - 1) * GAP_X, H = canvasEl.clientHeight - 24 - ($('#thumbs').offsetHeight || 0) - LABEL_H;
@@ -338,8 +340,8 @@ $('#devMenu').addEventListener('click', e => {
 $('#devMenu').addEventListener('change', e => { const k = e.target.dataset.dmSel; if (!k || !menuDev) return; menuDev[k] = k === 'cpu' ? +e.target.value : e.target.value; C.applyProfiles(menuDev).catch(() => {}); C.savePrefs(); });
 
 // ---------- set chips / device list ----------
-const SET_ICON = { 'popular-mobile': 'zap', 'essential-mobile': 'phone', 'mobile-tablet': 'tablet', 'essential-responsive': 'ruler', apple: 'apple', android: 'android', 'breakpoint-stress': 'ruler' };
-const SET_SHORT = { 'popular-mobile': 'Popular Mobile', apple: 'Apple', android: 'Android', 'mobile-tablet': 'Mobile + Tablet', 'essential-mobile': 'Essential', 'essential-responsive': 'Breakpoints', 'breakpoint-stress': 'Stress Test' };
+const SET_ICON = { 'popular-mobile': 'zap', 'essential-mobile': 'phone', 'mobile-tablet': 'tablet', 'essential-responsive': 'ruler', apple: 'apple', android: 'android', 'breakpoint-stress': 'ruler', tablets: 'tablet', desktops: 'monitor', foldables: 'phone', 'watches-tv': 'watch', 'all-screens': 'devices' };
+const SET_SHORT = { 'popular-mobile': 'Popular Mobile', apple: 'Apple', android: 'Android', 'mobile-tablet': 'Mobile + Tablet', 'essential-mobile': 'Essential', 'essential-responsive': 'Breakpoints', 'breakpoint-stress': 'Stress Test', tablets: 'Tablets', desktops: 'Desktops', foldables: 'Foldables', 'watches-tv': 'Watches + TV', 'all-screens': 'All Screens' };
 function currentSetId() { const ids = state.devices.map(d => d.presetId).join(','); return C.allSets().find(s => s.deviceIds.join(',') === ids)?.id || null; }
 function renderSets() {
   const cur = currentSetId(); const sets = C.allSets();
@@ -433,7 +435,7 @@ function togglePresent(on = !document.body.classList.contains('present')) {
 const picked = new Set(); let filter = null; let kbIndex = -1;
 function openPicker() { picked.clear(); filter = null; $('#search').value = ''; renderPicker(); $('#picker').hidden = false; $('#search').focus(); }
 function closePicker() { $('#picker').hidden = true; }
-const CATS = [['favorites', 'star', 'Favorites'], ['Apple', 'apple', 'Apple'], ['Samsung', 'samsung', 'Samsung'], ['Google', 'google', 'Google'], ['phone', 'phone', 'Phones'], ['tablet', 'tablet', 'Tablets'], ['foldable', 'phone', 'Foldables'], ['laptop', 'monitor', 'Desktop'], ['breakpoint', 'ruler', 'Breakpoints'], ['Custom', 'pencil', 'Custom']];
+const CATS = [['favorites', 'star', 'Favorites'], ['Apple', 'apple', 'Apple'], ['Samsung', 'samsung', 'Samsung'], ['Google', 'google', 'Google'], ['phone', 'phone', 'Phones'], ['foldable', 'phone', 'Foldables'], ['tablet', 'tablet', 'Tablets'], ['laptop', 'monitor', 'PC / Mac'], ['watch', 'watch', 'Watches'], ['tv', 'tv', 'TVs'], ['breakpoint', 'ruler', 'Breakpoints'], ['Custom', 'pencil', 'Custom']];
 function matches(d) { if (!filter) return true; if (filter === 'favorites') return C.favorites.has(d.id); if (filter === 'laptop') return d.category === 'laptop' || d.category === 'desktop'; return d.brand === filter || d.category === filter; }
 function renderPicker() {
   const q = $('#search').value.trim().toLowerCase(); const all = C.allPresets();

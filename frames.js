@@ -8,6 +8,13 @@ export function frameSpec(inst) {
   const base = { radius: 0, bezel: 0, cutout: 'none', statusBar: 'none', browser: 'none', navigation: 'none', family: 'minimal', shell: 'dark' };
   if (cat === 'breakpoint' || cat === 'custom' && !inst.mobile) return { ...base, family: 'minimal', radius: 14, bezel: 5, shell: 'minimal' };
   if (cat === 'laptop' || cat === 'desktop') return { ...base, family: 'desktop', radius: 10, bezel: 10, browser: 'desktop' };
+  if (cat === 'tv') return { ...base, family: 'tv', radius: 8, bezel: 12, shell: 'tv' };
+  if (cat === 'watch') {
+    const round = os === 'wearos' || Math.abs(inst.baseW - inst.baseH) < 8;
+    const bezel = round ? 18 : 14; const w = Math.min(inst.baseW, inst.baseH) + bezel * 2;
+    return { ...base, family: 'watch', radius: round ? Math.ceil(w / 2) : Math.round(w * 0.3), bezel, shell: 'graphite' };
+  }
+  if (os === 'windows' && cat === 'tablet') return { ...base, family: 'surface', radius: 12, bezel: 16, browser: 'desktop' };
   if (os === 'ios') {
     if (/iphone-se/.test(id)) return { ...base, family: 'iphone-classic', radius: 40, bezel: 14, cutout: 'none', statusBar: 'ios-classic', browser: 'safari', navigation: 'ios-toolbar-classic', topBezel: 60, bottomBezel: 60 };
     return { ...base, family: 'iphone-modern', radius: 54, bezel: 12, cutout: 'dynamic-island', statusBar: 'ios', browser: 'safari', navigation: 'ios-toolbar' };
@@ -32,13 +39,23 @@ export function osLabel(inst) {
   if (inst.os === 'ipados') return 'iPadOS 26';
   if (inst.os === 'android') return inst.category === 'tablet' ? 'Android 15' : 'Android 16';
   if (inst.os === 'macos') return 'macOS';
+  if (inst.os === 'watchos') return 'watchOS 26';
+  if (inst.os === 'wearos') return 'Wear OS 6';
+  if (inst.os === 'tvos') return 'tvOS 26';
+  if (inst.os === 'androidtv') return 'Google TV';
+  if (inst.os === 'tizen') return 'Tizen';
+  if (inst.os === 'windows') return 'Windows 11';
+  if (inst.category === 'tv') return 'TV';
+  if (inst.category === 'watch') return 'Watch';
   return inst.category === 'breakpoint' ? 'Breakpoint' : inst.category === 'laptop' || inst.category === 'desktop' ? 'Desktop' : 'Custom';
 }
 export function osIcon(inst) {
   const b = (inst.brand || '').toLowerCase();
-  if (inst.os === 'ios' || inst.os === 'ipados' || inst.os === 'macos') return 'apple';
+  if (inst.os === 'ios' || inst.os === 'ipados' || inst.os === 'macos' || inst.os === 'watchos' || inst.os === 'tvos') return 'apple';
   if (b === 'google') return 'google';
   if (b === 'samsung') return 'samsung';
+  if (inst.category === 'watch') return 'watch';
+  if (inst.category === 'tv') return 'tv';
   if (inst.os === 'android') return 'android';
   if (inst.category === 'breakpoint') return 'ruler';
   if (inst.category === 'laptop' || inst.category === 'desktop') return 'monitor';

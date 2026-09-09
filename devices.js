@@ -1,8 +1,8 @@
 // Device library. A device is data, not a feature (PRD §121).
 const d = (id, brand, name, category, os, w, h, dpr, tags = []) => ({
   id, brand, name, category, os, width: w, height: h, dpr,
-  mobile: category !== 'laptop' && category !== 'desktop',
-  touch: category !== 'laptop' && category !== 'desktop',
+  mobile: !['laptop', 'desktop', 'tv'].includes(category),
+  touch: !['laptop', 'desktop', 'tv'].includes(category),
   tags,
 });
 const bp = (w, h = 900) => ({
@@ -24,8 +24,13 @@ export const DEVICES = [
   d('ipad-air', 'Apple', 'iPad Air 13"', 'tablet', 'ipados', 1024, 1366, 2, []),
   d('ipad-pro-11', 'Apple', 'iPad Pro 11"', 'tablet', 'ipados', 834, 1210, 2, ['popular']),
   d('ipad-pro-13', 'Apple', 'iPad Pro 13"', 'tablet', 'ipados', 1032, 1376, 2, []),
-  d('macbook-air', 'Apple', 'MacBook Air 13"', 'laptop', 'macos', 1470, 956, 2, []),
+  d('macbook-air', 'Apple', 'MacBook Air 13"', 'laptop', 'macos', 1470, 956, 2, ['popular']),
+  d('macbook-pro-14', 'Apple', 'MacBook Pro 14"', 'laptop', 'macos', 1512, 982, 2, []),
   d('macbook-pro-16', 'Apple', 'MacBook Pro 16"', 'laptop', 'macos', 1728, 1117, 2, []),
+  d('imac-24', 'Apple', 'iMac 24"', 'desktop', 'macos', 2240, 1260, 2, []),
+  d('apple-watch-s10', 'Apple', 'Apple Watch Series 10', 'watch', 'watchos', 208, 248, 2, ['popular']),
+  d('apple-watch-ultra', 'Apple', 'Apple Watch Ultra 2', 'watch', 'watchos', 205, 251, 2, []),
+  d('apple-tv', 'Apple', 'Apple TV 4K', 'tv', 'tvos', 1920, 1080, 2, []),
   // Google
   d('pixel-8', 'Google', 'Pixel 8', 'phone', 'android', 412, 915, 2.625, []),
   d('pixel-9', 'Google', 'Pixel 9', 'phone', 'android', 412, 915, 2.625, []),
@@ -34,6 +39,8 @@ export const DEVICES = [
   d('pixel-10-pro-xl', 'Google', 'Pixel 10 Pro XL', 'phone', 'android', 448, 998, 3, []),
   d('pixel-fold', 'Google', 'Pixel Fold (open)', 'foldable', 'android', 841, 701, 2.5, []),
   d('pixel-tablet', 'Google', 'Pixel Tablet', 'tablet', 'android', 1600, 1000, 1.6, []),
+  d('pixel-watch-3', 'Google', 'Pixel Watch 3', 'watch', 'wearos', 228, 228, 2, ['popular']),
+  d('google-tv', 'Google', 'Google TV', 'tv', 'androidtv', 1920, 1080, 1, []),
   // Samsung
   d('galaxy-s24', 'Samsung', 'Galaxy S24', 'phone', 'android', 360, 780, 3, []),
   d('galaxy-s25', 'Samsung', 'Galaxy S25', 'phone', 'android', 384, 832, 3, []),
@@ -42,8 +49,17 @@ export const DEVICES = [
   d('galaxy-a55', 'Samsung', 'Galaxy A55', 'phone', 'android', 360, 800, 3, ['popular']),
   d('galaxy-z-fold', 'Samsung', 'Galaxy Z Fold (open)', 'foldable', 'android', 904, 1104, 2, []),
   d('galaxy-z-fold-closed', 'Samsung', 'Galaxy Z Fold (closed)', 'foldable', 'android', 344, 882, 2.5, []),
-  d('galaxy-z-flip', 'Samsung', 'Galaxy Z Flip', 'phone', 'android', 360, 880, 3, []),
-  d('galaxy-tab-s10', 'Samsung', 'Galaxy Tab S10', 'tablet', 'android', 800, 1280, 2, []),
+  d('galaxy-z-flip', 'Samsung', 'Galaxy Z Flip (open)', 'foldable', 'android', 360, 880, 3, []),
+  d('galaxy-z-flip-cover', 'Samsung', 'Galaxy Z Flip (cover)', 'foldable', 'android', 379, 419, 2.5, []),
+  d('galaxy-tab-s10', 'Samsung', 'Galaxy Tab S10', 'tablet', 'android', 800, 1280, 2, ['popular']),
+  d('galaxy-watch-7', 'Samsung', 'Galaxy Watch 7', 'watch', 'wearos', 240, 240, 2, []),
+  d('samsung-tv-4k', 'Samsung', 'Samsung 4K TV', 'tv', 'tizen', 1920, 1080, 2, []),
+  // Motorola
+  d('moto-razr', 'Motorola', 'Razr (open)', 'foldable', 'android', 408, 997, 3, []),
+  d('moto-razr-cover', 'Motorola', 'Razr (cover)', 'foldable', 'android', 424, 360, 3, []),
+  // Microsoft
+  d('surface-pro', 'Microsoft', 'Surface Pro 11', 'tablet', 'windows', 1440, 960, 2, []),
+  d('surface-laptop', 'Microsoft', 'Surface Laptop', 'laptop', 'windows', 1536, 1024, 1.5, []),
   // Xiaomi / others
   d('xiaomi-14', 'Xiaomi', 'Xiaomi 14', 'phone', 'android', 393, 873, 3, []),
   d('redmi-note-13', 'Xiaomi', 'Redmi Note 13', 'phone', 'android', 393, 873, 2.75, []),
@@ -53,6 +69,11 @@ export const DEVICES = [
   d('laptop-1536', 'Generic', 'Laptop 1536', 'laptop', 'any', 1536, 864, 1.25, []),
   d('desktop-1920', 'Generic', 'Desktop 1080p', 'desktop', 'any', 1920, 1080, 1, ['popular']),
   d('desktop-2560', 'Generic', 'Desktop 1440p', 'desktop', 'any', 2560, 1440, 1, []),
+  d('desktop-4k', 'Generic', 'Desktop 4K (150%)', 'desktop', 'any', 2560, 1440, 1.5, []),
+  d('ultrawide', 'Generic', 'Ultrawide 3440', 'desktop', 'any', 3440, 1440, 1, []),
+  d('kiosk-portrait', 'Generic', 'Kiosk portrait', 'desktop', 'any', 1080, 1920, 1, []),
+  d('tv-1080p', 'Generic', 'TV 1080p', 'tv', 'any', 1920, 1080, 1, ['popular']),
+  d('tv-4k', 'Generic', 'TV 4K', 'tv', 'any', 1920, 1080, 2, []),
   // Raw breakpoints
   bp(319, 700), bp(320, 700), bp(359, 780), bp(360, 780), bp(374, 800), bp(375, 800), bp(389, 844),
   bp(390, 844), bp(411, 900), bp(412, 900), bp(429, 932), bp(430, 932), bp(480, 900), bp(640, 900),
@@ -63,12 +84,17 @@ export const DEVICES = [
 export const QUICK_WIDTHS = [320, 360, 375, 390, 412, 430, 768, 1024, 1280, 1440];
 
 export const SETS = [
-  { id: 'essential-mobile', name: 'Essential Mobile', deviceIds: ['bp-360', 'bp-390', 'bp-412', 'bp-430'] },
-  { id: 'mobile-tablet', name: 'Mobile + Tablet', deviceIds: ['bp-390', 'bp-430', 'bp-768', 'bp-1024'] },
-  { id: 'essential-responsive', name: 'Essential Responsive', deviceIds: ['bp-320', 'bp-375', 'bp-390', 'bp-430', 'bp-768', 'bp-1024', 'bp-1440'] },
   { id: 'popular-mobile', name: 'Popular Mobile', deviceIds: ['iphone-se', 'iphone-17', 'iphone-17-pro-max', 'pixel-10', 'galaxy-s26'] },
   { id: 'apple', name: 'Apple Devices', deviceIds: ['iphone-se', 'iphone-17', 'iphone-17-pro', 'iphone-17-pro-max', 'ipad-mini', 'ipad', 'ipad-pro-11'] },
   { id: 'android', name: 'Android Devices', deviceIds: ['galaxy-a55', 'galaxy-s26', 'galaxy-s26-ultra', 'pixel-10', 'pixel-10-pro-xl', 'galaxy-tab-s10'] },
+  { id: 'tablets', name: 'Tablets', deviceIds: ['ipad-mini', 'ipad', 'ipad-pro-11', 'ipad-pro-13', 'galaxy-tab-s10', 'pixel-tablet', 'surface-pro'] },
+  { id: 'desktops', name: 'Desktops', deviceIds: ['macbook-air', 'macbook-pro-14', 'surface-laptop', 'laptop-1366', 'desktop-1920', 'desktop-2560', 'ultrawide'] },
+  { id: 'foldables', name: 'Foldables', deviceIds: ['galaxy-z-fold-closed', 'galaxy-z-fold', 'galaxy-z-flip-cover', 'galaxy-z-flip', 'pixel-fold', 'moto-razr-cover', 'moto-razr'] },
+  { id: 'watches-tv', name: 'Watches + TV', deviceIds: ['apple-watch-s10', 'apple-watch-ultra', 'pixel-watch-3', 'galaxy-watch-7', 'tv-1080p', 'tv-4k', 'apple-tv'] },
+  { id: 'all-screens', name: 'All Screens', deviceIds: ['apple-watch-s10', 'iphone-17', 'galaxy-z-fold', 'ipad-pro-11', 'macbook-air', 'desktop-1920', 'tv-4k'] },
+  { id: 'essential-mobile', name: 'Essential Mobile', deviceIds: ['bp-360', 'bp-390', 'bp-412', 'bp-430'] },
+  { id: 'mobile-tablet', name: 'Mobile + Tablet', deviceIds: ['bp-390', 'bp-430', 'bp-768', 'bp-1024'] },
+  { id: 'essential-responsive', name: 'Essential Responsive', deviceIds: ['bp-320', 'bp-375', 'bp-390', 'bp-430', 'bp-768', 'bp-1024', 'bp-1440'] },
   { id: 'breakpoint-stress', name: 'Breakpoint Stress Test', deviceIds: ['bp-319', 'bp-320', 'bp-359', 'bp-360', 'bp-374', 'bp-375', 'bp-389', 'bp-390', 'bp-411', 'bp-412', 'bp-429', 'bp-430', 'bp-767', 'bp-768', 'bp-1023', 'bp-1024'] },
 ];
 

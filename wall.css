@@ -158,6 +158,14 @@ button{cursor:pointer}
 .shell.shell-obsidian.mode-realistic{background:linear-gradient(160deg,#3b3e45,#16171b 42%,#0a0b0d)}
 .shell.fam-ipad.mode-realistic,.shell.fam-android-tablet.mode-realistic{background:linear-gradient(160deg,#4c4f57,#202229 42%,#121316)}
 .shell.fam-desktop.mode-realistic{background:#1b1d22;padding:0;border-radius:10px;overflow:hidden}
+.shell.fam-tv.mode-realistic{background:linear-gradient(160deg,#26282e,#0f1013 40%,#050506)}
+.shell.fam-tv.mode-realistic::after{inset:2px;border-radius:calc(var(--radius) - 2px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.shell.fam-watch.mode-realistic{background:linear-gradient(160deg,#5a5e68,#24272d 40%,#0e0f12)}
+.shell.fam-watch.mode-realistic::before{background:linear-gradient(160deg,rgba(255,255,255,.55),rgba(255,255,255,.1) 35%,rgba(0,0,0,.6));padding:2px}
+.fam-watch .screen{border-radius:calc(var(--radius) - var(--bezel) + 2px);overflow:hidden}
+.fam-tv .screen{border-radius:2px}
+.shell.fam-surface.mode-realistic{background:linear-gradient(160deg,#4b4e56,#1e2026 42%,#101114)}
+.fam-surface .screen{border-radius:4px}
 .shell.fam-desktop.mode-realistic::before,.shell.fam-desktop.mode-realistic::after{display:none}
 .shell.mode-minimal,.shell.fam-minimal.mode-realistic{background:var(--border-strong)}
 .shell.fam-minimal.mode-realistic::before,.shell.fam-minimal.mode-realistic::after,.shell.mode-minimal::after{display:none}
