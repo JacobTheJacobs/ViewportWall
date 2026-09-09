@@ -341,12 +341,14 @@ let menuDev = null;
 function openDevMenu(d, anchor) {
   menuDev = d; const m = $('#devMenu');
   m.querySelector('[data-dm=pause]').innerHTML = icon(d.paused ? 'play' : 'pause', 15) + (d.paused ? 'Resume rendering' : 'Pause rendering');
+  const fold = m.querySelector('[data-dm=fold]'); fold.hidden = !C.canFold(d); fold.innerHTML = icon('phone', 15) + (C.folded(d) ? 'Unfold (open screen)' : 'Fold (cover screen)');
   m.querySelector('[data-dm-sel=net]').value = d.net || 'none'; m.querySelector('[data-dm-sel=cpu]').value = String(d.cpu || 1);
   showPop('devMenu', anchor, 'left');
 }
 $('#devMenu').addEventListener('click', e => {
   const k = e.target.closest('[data-dm]')?.dataset.dm; if (!k || !menuDev) return; const d = menuDev; hidePops();
   if (k === 'reload') C.reloadOne(d); else if (k === 'rotate') C.rotate(d); else if (k === 'pause') C.togglePause(d);
+  else if (k === 'fold') C.foldDevice(d);
   else if (k === 'focus') setMode('focus', d.instanceId); else if (k === 'shot' || k === 'full') { d.render === 'iframe' ? toast('Screenshots need Full emulation (Settings → Rendering)') : k === 'shot' ? C.screenshotDevice(d) : C.screenshotFullPage(d); }
   else if (k === 'compare') { const a = state.activeId && state.activeId !== d.instanceId ? state.activeId : state.devices.map(x => x.instanceId).find(x => x !== d.instanceId); compareSel = new Set([a, d.instanceId].filter(Boolean)); setMode('compare', a); }
   else if (k === 'note') { const v = prompt(`QA note for ${d.name}`, d.note || ''); if (v != null) { d.note = v.trim(); renderPanelState(d); renderIssues(); C.savePrefs(); } }
@@ -468,7 +470,6 @@ function renderPicker() {
   const q = $('#search').value.trim().toLowerCase(); const all = C.allPresets();
   const list = all.filter(d => matches(d) && (!q || `${d.brand} ${d.name} ${d.width} ${d.height} ${d.width}px`.toLowerCase().includes(q)));
   $('#filters').innerHTML = CATS.map(([k, ic, l]) => `<button data-f="${k}" class="${filter === k ? 'on' : ''}">${icon(ic, 13)}${l}</button>`).join('');
-  $('#wTicks').innerHTML = QUICK_WIDTHS.map(w => `<button type="button" data-w="${w}">${w}</button>`).join('');
   const row = d => `<div class="dev ${picked.has(d.id) ? 'on' : ''}" data-pick="${d.id}"><span class="box">${icon('check', 12)}</span><span class="sil">${mini(d)}</span><span class="dn">${esc(d.name)}</span><span class="dm">${d.width}×${d.height} · ${d.dpr}x</span><button class="fav ${C.favorites.has(d.id) ? 'on' : ''}" data-fav="${d.id}" data-tip="Favorite">${icon('star', 14)}</button>${d.custom ? `<button class="del" data-del="${d.id}" data-tip="Delete custom device">${icon('trash', 14)}</button>` : ''}</div>`;
   const groups = {};
   if (!q && !filter) { const pop = all.filter(d => (d.tags || []).includes('popular') && d.category !== 'breakpoint'); if (pop.length) groups.Popular = pop; }
@@ -490,13 +491,6 @@ $('#picker').addEventListener('click', e => {
 function commitPick() { const ps = [...picked].map(C.findPreset).filter(Boolean); closePicker(); if (ps.length) C.addDevices(ps); }
 $('#search').addEventListener('input', renderPicker);
 // Width slider: drag or type any width, add it as a breakpoint device.
-const wRange = $('#wRange'), wNum = $('#wNum');
-wRange.addEventListener('input', () => { wNum.value = wRange.value; });
-wNum.addEventListener('input', () => { const v = Math.max(100, Math.min(4000, +wNum.value || 0)); wRange.value = Math.max(240, Math.min(2560, v)); });
-$('#wTicks').addEventListener('click', e => { const b = e.target.closest('[data-w]'); if (b) { wRange.value = wNum.value = b.dataset.w; } });
-function addWidth() { const w = Math.max(100, Math.min(4000, Math.round(+wNum.value || 0))); if (!w) return; C.addDevices([C.widthPreset(w)]); toast(`${w}px added`); }
-$('#wAdd').addEventListener('click', addWidth);
-wNum.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addWidth(); } });
 $('#search').addEventListener('keydown', e => {
   const rows = $$('#groups .dev');
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); kbIndex = Math.max(0, Math.min(rows.length - 1, kbIndex + (e.key === 'ArrowDown' ? 1 : -1))); rows.forEach((r, i) => r.classList.toggle('kb', i === kbIndex)); rows[kbIndex]?.scrollIntoView({ block: 'nearest' }); }
@@ -540,6 +534,7 @@ Object.assign(ui, {
   mount, unmount, renderPanelState, relayout, frameUpdated, renderIssues, toast, mountFrame, unmountFrame, setFrameUrl,
   setUrl: u => { $('#url').value = u; for (const d of state.devices) updateHost(panels.get(d.instanceId), d.url || u); },
   countChanged: () => { renderDeviceList(); renderStatus(); renderSets(); renderThumbs(); },
+  rebuild: d => { buildFrame(d); renderPanelState(d); relayout(); renderDeviceList(); renderThumbs(); },
   renderRecent: list => { $('#recent').innerHTML = (list || []).map(u => `<option value="${esc(u)}">`).join(''); },
   setActive: setActiveUI,
 });

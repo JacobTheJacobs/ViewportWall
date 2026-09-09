@@ -105,6 +105,7 @@
 <div id="devMenu" class="pop menu" hidden>
   <button data-dm="reload">Reload device</button>
   <button data-dm="rotate">Rotate device</button>
+  <button data-dm="fold" hidden>Fold</button>
   <button data-dm="pause">Pause rendering</button>
   <button data-dm="focus">Focus device</button>
   <div class="menu-sep"></div>
@@ -133,10 +134,7 @@
     <div class="pal-filters" id="filters"></div>
     <div class="pal-body">
       <section><div class="pal-sub">Sets</div><div class="pal-sets" id="palSets"></div></section>
-      <section class="width-sec"><div class="pal-sub">Any width</div>
-        <div class="wslider"><input type="range" id="wRange" min="240" max="2560" step="1" value="390"><input type="number" id="wNum" min="100" max="4000" value="390"><span class="muted">px</span><button class="btn sm primary" id="wAdd">Add width</button></div>
-        <div class="wticks" id="wTicks"></div>
-      </section>
+
       <div id="groups"></div>
       <section class="custom-sec">
         <div class="pal-sub">Custom device</div>

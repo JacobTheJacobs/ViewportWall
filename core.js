@@ -1,6 +1,6 @@
 // Viewport Wall core: state, CDP targets, emulation, sync, capture, screenshots, sessions.
 // UI code registers hooks in `ui`; the core never touches DOM structure directly except through them.
-import { DEVICES, SETS, UA } from './devices.js';
+import { DEVICES, SETS, UA, foldCounterpart, isFolded } from './devices.js';
 
 window.__vwState = globalThis.__vwState || null;
 export const state = {
@@ -463,6 +463,16 @@ export async function rotate(inst) {
   ui.renderPanelState(inst); ui.relayout(); savePrefs();
   if (inst.tabId != null) { try { await applyEmulation(inst); mark(inst); refreshCast(inst); } catch (e) { setError(inst, e.message); } }
 }
+// Fold / unfold a foldable in place: same panel, same page, the counterpart screen's metrics.
+export async function foldDevice(inst) {
+  const other = findPreset(foldCounterpart(inst.presetId)); if (!other) return;
+  inst.presetId = other.id; inst.name = other.name; inst.baseW = other.width; inst.baseH = other.height; inst.dpr = other.dpr || 1;
+  inst.mobile = !!other.mobile; inst.touch = !!other.touch; inst.orientation = 'portrait';
+  ui.rebuild(inst); savePrefs();
+  if (inst.tabId != null) { try { await applyEmulation(inst); mark(inst); refreshCast(inst); } catch (e) { setError(inst, e.message); } }
+}
+export const canFold = inst => !!foldCounterpart(inst.presetId);
+export const folded = inst => isFolded(inst.presetId);
 export function setActive(id) { const prev = state.devices.find(d => d.instanceId === state.activeId); state.activeId = id; ui.setActive(id); if (prev) refreshCast(prev); const cur = state.devices.find(d => d.instanceId === id); if (cur) refreshCast(cur); }
 export function togglePause(inst) { inst.paused = !inst.paused; ui.renderPanelState(inst); refreshCast(inst); if (!inst.paused) mark(inst); }
 export function retry(inst) { destroyTarget(inst).then(() => createTarget(inst)).then(activateControllerTab); }

@@ -38,6 +38,7 @@ export const DEVICES = [
   d('pixel-10-pro', 'Google', 'Pixel 10 Pro', 'phone', 'android', 412, 915, 2.625, []),
   d('pixel-10-pro-xl', 'Google', 'Pixel 10 Pro XL', 'phone', 'android', 448, 998, 3, []),
   d('pixel-fold', 'Google', 'Pixel Fold (open)', 'foldable', 'android', 841, 701, 2.5, []),
+  d('pixel-fold-closed', 'Google', 'Pixel Fold (closed)', 'foldable', 'android', 412, 797, 2.625, []),
   d('pixel-tablet', 'Google', 'Pixel Tablet', 'tablet', 'android', 1600, 1000, 1.6, []),
   d('pixel-watch-3', 'Google', 'Pixel Watch 3', 'watch', 'wearos', 228, 228, 2, ['popular']),
   d('google-tv', 'Google', 'Google TV', 'tv', 'androidtv', 1920, 1080, 1, []),
@@ -81,6 +82,17 @@ export const DEVICES = [
   bp(1440, 900), bp(1536, 864), bp(1920, 1080),
 ];
 
+// Every foldable exists twice: unfolded and on its cover/closed screen. A device on the wall switches between the two
+// in place (device menu → Fold / Unfold), keeping its position and page.
+export const FOLD_PAIRS = {
+  'galaxy-z-fold': 'galaxy-z-fold-closed',
+  'galaxy-z-flip': 'galaxy-z-flip-cover',
+  'pixel-fold': 'pixel-fold-closed',
+  'moto-razr': 'moto-razr-cover',
+};
+export const foldCounterpart = id => FOLD_PAIRS[id] || Object.keys(FOLD_PAIRS).find(k => FOLD_PAIRS[k] === id) || null;
+export const isFolded = id => Object.values(FOLD_PAIRS).includes(id);
+
 export const QUICK_WIDTHS = [320, 360, 375, 390, 412, 430, 768, 1024, 1280, 1440];
 
 export const SETS = [
@@ -89,7 +101,7 @@ export const SETS = [
   { id: 'android', name: 'Android Devices', deviceIds: ['galaxy-a55', 'galaxy-s26', 'galaxy-s26-ultra', 'pixel-10', 'pixel-10-pro-xl', 'galaxy-tab-s10'] },
   { id: 'tablets', name: 'Tablets', deviceIds: ['ipad-mini', 'ipad', 'ipad-pro-11', 'ipad-pro-13', 'galaxy-tab-s10', 'pixel-tablet', 'surface-pro'] },
   { id: 'desktops', name: 'Desktops', deviceIds: ['macbook-air', 'macbook-pro-14', 'surface-laptop', 'laptop-1366', 'desktop-1920', 'desktop-2560', 'ultrawide'] },
-  { id: 'foldables', name: 'Foldables', deviceIds: ['galaxy-z-fold-closed', 'galaxy-z-fold', 'galaxy-z-flip-cover', 'galaxy-z-flip', 'pixel-fold', 'moto-razr-cover', 'moto-razr'] },
+  { id: 'foldables', name: 'Foldables', deviceIds: ['galaxy-z-fold-closed', 'galaxy-z-fold', 'galaxy-z-flip-cover', 'galaxy-z-flip', 'pixel-fold-closed', 'pixel-fold', 'moto-razr-cover', 'moto-razr'] },
   { id: 'watches-tv', name: 'Watches + TV', deviceIds: ['apple-watch-s10', 'apple-watch-ultra', 'pixel-watch-3', 'galaxy-watch-7', 'tv-1080p', 'tv-4k', 'apple-tv'] },
   { id: 'all-screens', name: 'All Screens', deviceIds: ['apple-watch-s10', 'iphone-17', 'galaxy-z-fold', 'ipad-pro-11', 'macbook-air', 'desktop-1920', 'tv-4k'] },
   { id: 'essential-mobile', name: 'Essential Mobile', deviceIds: ['bp-360', 'bp-390', 'bp-412', 'bp-430'] },
