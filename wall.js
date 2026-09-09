@@ -17,16 +17,16 @@ let compareSel = new Set();
 // ---------- static icons ----------
 const setIcon = (sel, name, size = 16, label = '', chev = false) => { const el = $(sel); if (el) el.innerHTML = icon(name, size) + (label ? `<span class="lbl">${label}</span>` : '') + (chev ? icon('chevron', 14, 'chev') : ''); };
 setIcon('#back', 'back', 18); setIcon('#fwd', 'forward', 18); setIcon('#reload', 'reload', 17);
-setIcon('#add', 'plus', 18, 'Add Device'); setIcon('#moreBtn', 'more', 18);
+setIcon('#add', 'plus', 18, 'Add Device'); setIcon('#settingsBtn', 'sliders', 18);
 setIcon('#captureBtn', 'camera', 17, 'Screenshot'); setIcon('#recordBtn', 'record', 17, 'Record');
-setIcon('#devicesBtn', 'devices', 17, ''); setIcon('#footMore', 'more', 17);
+setIcon('#saveSetBtn', 'save', 14, 'Save set'); setIcon('#bpBtn', 'ruler', 14, 'Breakpoints'); setIcon('#saveSessionBtn', 'clock', 14, 'Save session'); setIcon('#clearBtn', 'trash', 14, 'Clear all');
 $('.url-lock').innerHTML = icon('lock', 14); $('.url-globe').innerHTML = icon('globe', 15); $('.pal-ic').innerHTML = icon('search', 18); $('#picker [data-act=close]').innerHTML = icon('x');
 const MODE_ICON = { live: 'live', snapshots: 'snapshots', focus: 'focus', compare: 'compare' }, MODE_LABEL = { live: 'Live', snapshots: 'Snapshots', focus: 'Focus', compare: 'Compare' };
 $$('#modes button').forEach(b => { b.innerHTML = icon(MODE_ICON[b.dataset.mode], 16) + MODE_LABEL[b.dataset.mode]; });
-$$('#capturePop button, #morePop button, #devMenu button, #footPop button, #layoutPop button').forEach(b => {
+$$('#capturePop button, #settingsPop button, #devMenu button, #viewPop [data-view]').forEach(b => {
   const map = { active: 'phone', all: 'layers', wall: 'grid', full: 'file', present: 'present', rotateAll: 'rotate', report: 'note', saveSession: 'save', clear: 'trash', about: 'info',
-    reload: 'reload', pause: 'pause', focus: 'focus', shot: 'camera', compare: 'compare', note: 'note', edit: 'pencil', dup: 'copy', remove: 'trash', breakpoints: 'ruler', auto: 'wand', horizontal: 'rows', grid: 'grid', free: 'layout' };
-  const k = b.dataset.cap || b.dataset.more || b.dataset.dm || b.dataset.foot || b.dataset.layout; if (map[k]) b.insertAdjacentHTML('afterbegin', icon(map[k], 15));
+    reload: 'reload', rotate: 'rotate', pause: 'pause', focus: 'focus', shot: 'camera', compare: 'compare', note: 'note', edit: 'pencil', dup: 'copy', remove: 'trash', breakpoints: 'ruler', auto: 'wand', horizontal: 'rows', grid: 'grid', free: 'layout' };
+  const k = b.dataset.cap || b.dataset.more || b.dataset.dm || b.dataset.view; if (map[k]) b.insertAdjacentHTML('afterbegin', icon(map[k], 15));
 });
 
 // ---------- helpers ----------
@@ -41,7 +41,7 @@ const hostOf = u => { try { return new URL(u).host; } catch { return u || ''; } 
 function mount(d) {
   const el = $('#panelTpl').content.firstElementChild.cloneNode(true);
   el.dataset.id = d.instanceId; panels.set(d.instanceId, el); wallEl.appendChild(el);
-  const ic = { reload: 'reload', focus: 'focus', shot: 'camera', menu: 'more', rotate: 'rotate', remove: 'x' };
+  const ic = { menu: 'more', rotate: 'rotate', remove: 'x' };
   for (const [k, v] of Object.entries(ic)) el.querySelector(`[data-act=${k}]`).innerHTML = icon(v, 16);
   el.querySelector('.os-ic').innerHTML = icon(osIcon(d), 18);
   el.querySelector('.ov-error .ov-ic').innerHTML = icon('warn', 30);
@@ -50,11 +50,8 @@ function mount(d) {
   el.addEventListener('click', e => {
     const b = e.target.closest('[data-act]'); if (!b) return; e.stopPropagation();
     const a = b.dataset.act;
-    if (a === 'reload') C.reloadOne(d, e.shiftKey);
-    else if (a === 'rotate') C.rotate(d);
+    if (a === 'rotate') C.rotate(d);
     else if (a === 'remove') C.removeDevice(d);
-    else if (a === 'focus') setMode(mode === 'focus' && focusIds[0] === d.instanceId ? 'live' : 'focus', d.instanceId);
-    else if (a === 'shot') e.shiftKey ? C.screenshotFullPage(d) : C.screenshotDevice(d);
     else if (a === 'menu') openDevMenu(d, b);
     else if (a === 'retry') C.retry(d);
   });
@@ -123,8 +120,7 @@ function relayout() {
     el.style.width = Math.max(200, Math.round(ow * s)) + 'px'; el.classList.toggle('narrow', ow * s < 300);
     if (type === 'free' && !big) { if (d.fx == null) { d.fx = 40 + (list.indexOf(d) % 4) * 340; d.fy = 30 + Math.floor(list.indexOf(d) / 4) * 720; } el.style.left = d.fx + 'px'; el.style.top = d.fy + 'px'; } else { el.style.left = el.style.top = ''; }
   }
-  $('#zoomBtn').innerHTML = `<span class="lbl">${zoom === 'fit' ? 'Fit all' : zoom === 'fith' ? 'Fit' : ''} ${Math.round(base * 100)}%</span>` + icon('chevron', 14, 'chev');
-  renderThumbs();
+  renderViewBtn(base); renderThumbs();
 }
 const clamp = s => Math.max(0.08, Math.min(1, s));
 function fitScale(list) {
@@ -242,9 +238,15 @@ function syncSync() { $$('#syncGroup [data-sync]').forEach(i => { i.checked = !!
 $('#syncGroup').addEventListener('change', e => { const k = e.target.dataset.sync; if (!k) return; state.sync[k] = e.target.checked; C.savePrefs(); for (const d of state.devices) renderPanelState(d); });
 
 // layout / zoom / frames
-$('#layoutPop').addEventListener('click', e => { const v = e.target.closest('[data-layout]')?.dataset.layout; if (!v) return; state.layout.type = v; if (v !== 'free') state.devices.forEach(d => { d.fx = d.fy = null; }); renderLayoutBtn(); relayout(); C.savePrefs(); hidePops(); });
-function renderLayoutBtn() { const L = { auto: ['wand', 'Auto'], horizontal: ['rows', 'Row'], grid: ['grid', 'Grid'], free: ['layout', 'Free'] }[state.layout.type] || ['wand', 'Auto']; $('#layoutBtn').innerHTML = icon(L[0], 16) + `<span class="lbl">${L[1]}</span>` + icon('chevron', 14, 'chev'); $$('#layoutPop button').forEach(b => b.classList.toggle('on', b.dataset.layout === state.layout.type)); }
-$('#zoomPop').addEventListener('click', e => { const z = e.target.dataset.zoom; if (!z) return; state.layout.zoom = z; relayout(); C.savePrefs(); hidePops(); });
+const LAYOUTS = { auto: ['wand', 'Auto'], horizontal: ['rows', 'Row'], grid: ['grid', 'Grid'], free: ['layout', 'Free'] };
+$('#layoutSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.type = v; if (v !== 'free') state.devices.forEach(d => { d.fx = d.fy = null; }); setSeg('layoutSeg', v); relayout(); C.savePrefs(); });
+$('#zoomSeg').addEventListener('click', e => { const z = e.target.dataset.v; if (!z) return; state.layout.zoom = z; setSeg('zoomSeg', z); relayout(); C.savePrefs(); });
+// One button summarises layout + zoom ("Auto · 51%"); the menu behind it holds every view option.
+function renderViewBtn(base) {
+  const L = LAYOUTS[state.layout.type] || LAYOUTS.auto; const z = state.layout.zoom; const pct = Math.round((base != null ? base : currentScale()) * 100);
+  $('#viewBtn').innerHTML = icon(L[0], 16) + `<span class="lbl">${L[1]} · ${z === 'fit' ? 'Fit all' : z === 'fith' ? 'Fit' : ''} ${pct}%</span>` + icon('chevron', 14, 'chev');
+  setSeg('layoutSeg', state.layout.type); setSeg('zoomSeg', z);
+}
 $('#framesToggle').addEventListener('change', e => { state.layout.frames = e.target.checked ? (state.layout.frameStyle || 'realistic') : 'none'; C.savePrefs(); rebuildAll(); });
 $('#frameSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.frameStyle = v; if (state.layout.frames !== 'none') state.layout.frames = v; setSeg('frameSeg', v); C.savePrefs(); rebuildAll(); });
 $('#browserSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.browser = v; setSeg('browserSeg', v); C.savePrefs(); rebuildAll(); });
@@ -280,18 +282,18 @@ function startRecording() {
 function stopRecording() { if (!rec) return; clearInterval(rec.timer); rec.mr.stop(); rec = null; const b = $('#recordBtn'); b.classList.remove('rec', 'on'); b.innerHTML = icon('record', 17) + '<span class="lbl">Record</span>'; toast('Recording saved'); }
 
 // more / foot menus
-$('#morePop').addEventListener('click', async e => {
+$('#settingsPop').addEventListener('click', async e => {
   const k = e.target.closest('[data-more]')?.dataset.more; if (!k) return; hidePops();
-  if (k === 'rotateAll') state.devices.forEach(C.rotate);
-  else if (k === 'present') togglePresent();
-  else if (k === 'report') { try { await navigator.clipboard.writeText(C.buildReport()); toast('Report copied to clipboard'); } catch { toast('Copy failed'); } }
+  if (k === 'report') { try { await navigator.clipboard.writeText(C.buildReport()); toast('Report copied to clipboard'); } catch { toast('Copy failed'); } }
   else if (k === 'about') $('#onboard').hidden = false;
 });
-$('#footPop').addEventListener('click', e => {
-  const k = e.target.closest('[data-foot]')?.dataset.foot; if (!k) return;
-  if (k === 'breakpoints') { renderBpCommon(); showPop('bpPop', $('#footMore'), 'left'); }
-  else if (k === 'saveSession') { hidePops(); const n = prompt('Session name', hostOf(state.url) + ' QA'); if (n) { C.saveSession(n); renderSessions(); toast('Session saved'); } }
+$('#viewPop').addEventListener('click', e => {
+  const k = e.target.closest('[data-view]')?.dataset.view; if (!k) return; hidePops();
+  if (k === 'rotateAll') state.devices.forEach(C.rotate);
+  else if (k === 'present') togglePresent();
 });
+$('#bpBtn').addEventListener('click', () => { renderBpCommon(); showPop('bpPop', $('#devicesBtn'), 'left'); });
+$('#saveSessionBtn').addEventListener('click', () => { hidePops(); const n = prompt('Session name', hostOf(state.url) + ' QA'); if (n) { C.saveSession(n); renderSessions(); toast('Session saved'); } });
 $('#auto').addEventListener('change', e => C.setAutoReload(+e.target.value));
 $('#mobileUA').addEventListener('change', e => { C.setMobileUA(e.target.checked); toast(e.target.checked ? 'Mobile user agent on. Some sites may ask you to sign in again.' : 'Mobile user agent off'); });
 $('#sessions').addEventListener('change', async e => {
@@ -300,8 +302,9 @@ $('#sessions').addEventListener('change', async e => {
   const x = await C.loadSession(v); if (x) { syncUIFromState(); x.devices.forEach((pd, i) => { if (state.devices[i]) { state.devices[i].note = pd.note; renderPanelState(state.devices[i]); } }); toast(`Session "${x.name}" loaded`); }
 });
 function renderSessions() { $('#sessions').innerHTML = '<option value="">Open…</option>' + C.sessions.map(s => `<option value="${s.id}">${esc(s.name)} · ${new Date(s.ts).toLocaleDateString()}</option>`).join('') + C.sessions.map(s => `<option value="del:${s.id}">Delete "${esc(s.name)}"</option>`).join(''); }
-$('#clearBtn').addEventListener('click', () => { if (state.devices.length && confirm('Remove all devices from the wall?')) C.clearDevices(); });
-$('#saveSetBtn').addEventListener('click', () => { if (!state.devices.length) return toast('Add devices first'); const n = prompt('Set name', 'My Set'); if (n) { C.saveSet(n); renderSets(); toast('Set saved'); } });
+$('#clearBtn').addEventListener('click', () => { hidePops(); if (state.devices.length && confirm('Remove all devices from the wall?')) C.clearDevices(); });
+function saveCurrentSet() { hidePops(); if (!state.devices.length) return toast('Add devices first'); const n = prompt('Set name', 'My Set'); if (n) { C.saveSet(n); renderSets(); toast('Set saved'); } }
+$('#saveSetBtn').addEventListener('click', saveCurrentSet);
 
 // breakpoints
 let detected = []; const bpPicked = new Set();
@@ -326,7 +329,7 @@ function openDevMenu(d, anchor) {
 }
 $('#devMenu').addEventListener('click', e => {
   const k = e.target.closest('[data-dm]')?.dataset.dm; if (!k || !menuDev) return; const d = menuDev; hidePops();
-  if (k === 'reload') C.reloadOne(d); else if (k === 'pause') C.togglePause(d);
+  if (k === 'reload') C.reloadOne(d); else if (k === 'rotate') C.rotate(d); else if (k === 'pause') C.togglePause(d);
   else if (k === 'focus') setMode('focus', d.instanceId); else if (k === 'shot') C.screenshotDevice(d); else if (k === 'full') C.screenshotFullPage(d);
   else if (k === 'compare') { const a = state.activeId && state.activeId !== d.instanceId ? state.activeId : state.devices.map(x => x.instanceId).find(x => x !== d.instanceId); compareSel = new Set([a, d.instanceId].filter(Boolean)); setMode('compare', a); }
   else if (k === 'note') { const v = prompt(`QA note for ${d.name}`, d.note || ''); if (v != null) { d.note = v.trim(); renderPanelState(d); renderIssues(); C.savePrefs(); } }
@@ -349,13 +352,13 @@ function renderSets() {
 $('#setChips').addEventListener('click', e => { const b = e.target.closest('[data-set]'); if (b) C.applySet(b.dataset.set).then(renderSets); });
 $('#setsPop').addEventListener('click', e => {
   const del = e.target.closest('[data-delset]'); if (del) { e.stopPropagation(); if (confirm('Delete this set?')) { C.deleteSet(del.dataset.delset); renderSets(); hidePops(); } return; }
-  if (e.target.closest('[data-act=saveset]')) { hidePops(); $('#saveSetBtn').click(); return; }
+  if (e.target.closest('[data-act=saveset]')) { saveCurrentSet(); return; }
   const b = e.target.closest('[data-set]'); if (b) { hidePops(); C.applySet(b.dataset.set).then(renderSets); }
 });
 function renderDeviceList() {
   $('#devList').innerHTML = state.devices.map(d => `<button class="sb-item ${d.instanceId === state.activeId ? 'on' : ''}" draggable="true" data-id="${d.instanceId}">${icon(osIcon(d), 15)}<span class="t">${esc(d.name)}</span><span class="n">${dims(d)[0]} × ${dims(d)[1]}</span><span class="rm" data-rm="${d.instanceId}" data-tip="Remove device">${icon('x', 13)}</span></button>`).join('') || '<div class="pop-hint">No devices yet.</div>';
   $('#devCount').textContent = state.devices.length ? `· ${state.devices.length}` : '';
-  $('#devicesBtn').innerHTML = icon('devices', 17) + `<span class="lbl">${state.devices.length} device${state.devices.length === 1 ? '' : 's'}</span>`;
+  $('#devicesBtn').innerHTML = icon('devices', 17) + `<span class="lbl">${state.devices.length} device${state.devices.length === 1 ? '' : 's'}</span>` + icon('chevron', 14, 'chev');
 }
 $('#devList').addEventListener('click', e => {
   const rm = e.target.closest('[data-rm]'); if (rm) { e.stopPropagation(); const d = inst(rm.dataset.rm); if (d) C.removeDevice(d); return; }
@@ -374,7 +377,7 @@ function renderStatus() {
   $('#empty').hidden = n > 0;
 }
 function syncUIFromState() {
-  $('#framesToggle').checked = state.layout.frames !== 'none'; setSeg('frameSeg', state.layout.frameStyle || 'realistic'); setSeg('browserSeg', state.layout.browser); applyTheme(); syncSync(); renderLayoutBtn();
+  $('#framesToggle').checked = state.layout.frames !== 'none'; setSeg('frameSeg', state.layout.frameStyle || 'realistic'); setSeg('browserSeg', state.layout.browser); applyTheme(); syncSync(); renderViewBtn();
   $('#mobileUA').checked = !!state.layout.mobileUA; $('#url').value = state.url;
   rebuildAll(); renderSets(); renderDeviceList(); renderStatus();
 }

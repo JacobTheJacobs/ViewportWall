@@ -48,7 +48,8 @@ const INJECT = `(function(){
       if (el.scrollWidth > el.clientWidth + 1 && (cs.overflow !== 'visible' || cs.whiteSpace === 'nowrap')) { issues.push({ kind: 'clip', msg: 'Text clipped: ' + label(el) }); n++; }
     }
     n = 0;
-    for (const el of document.querySelectorAll('*')) {
+    const all = document.querySelectorAll('body *'); const lim = Math.min(all.length, 2500);
+    for (let i = 0; i < lim; i++) { const el = all[i];
       if (n > 5) break;
       const cs = getComputedStyle(el); if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
       const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
@@ -66,7 +67,8 @@ const INJECT = `(function(){
     for (const img of document.images) { const r = img.getBoundingClientRect(); if (r.width && r.right > innerWidth + 1) { issues.push({ kind: 'image', msg: 'Image exceeds viewport: ' + (img.alt || img.src.split('/').pop().slice(0, 30)) }); break; } }
     report('check', { issues });
   };
-  let c; const sched = () => { clearTimeout(c); c = setTimeout(check, 300); };
+  let c, last = 0; const run = () => { last = Date.now(); try { check(); } catch (e) {} };
+  const sched = () => { clearTimeout(c); const wait = Math.max(300, 1500 - (Date.now() - last)); c = setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(run, { timeout: 1000 }) : run()), wait); };
   addEventListener('load', sched); addEventListener('resize', sched); document.readyState === 'complete' && sched();
   new MutationObserver(sched).observe(document.documentElement, { childList: true, subtree: true, attributes: false });
 })();`;
@@ -128,7 +130,25 @@ async function ensureWindow() {
   state.windowId = win.id;
   state.spareTabId = win.tabs && win.tabs[0] ? win.tabs[0].id : null;
   chrome.runtime.sendMessage({ type: 'register-window', windowId: win.id });
-  try { const me = await chrome.windows.getCurrent(); await chrome.windows.update(me.id, { focused: true }); } catch {}
+  // Keep it out of the way: parked bottom-right (window managers ignore the position at creation), then minimized.
+  // If a minimized window stops tabs from painting on this platform, restoreWindow() brings it back unfocused.
+  try { await chrome.windows.update(win.id, { state: 'minimized' }); state.windowMinimized = true; } catch {}
+  await focusWall();
+}
+async function focusWall() {
+  for (let i = 0; i < 3; i++) {
+    try { const me = await chrome.windows.getCurrent(); await chrome.windows.update(me.id, { focused: true }); window.focus(); if ((await chrome.windows.get(me.id)).focused) return; } catch {}
+    await new Promise(r => setTimeout(r, 250));
+  }
+}
+async function restoreWindow() {
+  if (!state.windowMinimized || state.windowId == null) return false;
+  state.windowMinimized = false;
+  const w = 420, h = 320;
+  try { await chrome.windows.update(state.windowId, { state: 'normal', left: Math.max(0, screen.availWidth - w - 8), top: Math.max(0, screen.availHeight - h - 8), width: w, height: h }); } catch { return false; }
+  await focusWall();
+  ui.toast('Helper window restored so devices can render');
+  return true;
 }
 
 const NET = {
@@ -234,12 +254,10 @@ chrome.tabs.onRemoved.addListener(tabId => {
 });
 
 export const isWebUrl = u => /^(https?|file):\/\//i.test(u || '') && !/^https?:\/\/chrome-error/i.test(u);
-let navGuard = '';
 function onActiveNavigated(url) {
   if (!url || url === state.url || !isWebUrl(url)) return;
   state.url = url; ui.setUrl(url); pushRecent(url);
   if (!state.sync.navigation) return;
-  if (navGuard === url) return; navGuard = url;
   for (const d of state.devices) {
     if (d.instanceId === state.activeId || d.tabId == null || d.url === url) continue;
     d.url = url; send(d.tabId, 'Page.navigate', { url }).catch(() => {});
@@ -261,11 +279,32 @@ function syncScroll(from, ratio) {
 // ---------- capture loop ----------
 // Background tabs in an occluded window can stall their first paint. Activating the tab inside the helper window
 // forces a frame; it is invisible to the user because the helper window is never focused.
+// Stalled tabs are woken one at a time: each stays active until its first frame arrives (max 3s), then the
+// controller tab is restored. A fixed activation window was too short for heavy pages at DPR 3.
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let nudging = null; const nudgeQ = [];
 function nudge(inst) {
-  if (inst.tabId == null || inst.nudgedAt && Date.now() - inst.nudgedAt < 3000) return;
-  inst.nudgedAt = Date.now();
-  chrome.tabs.update(inst.tabId, { active: true }).catch(() => {});
-  setTimeout(activateControllerTab, 900);
+  if (inst.tabId == null || inst.frame || nudging === inst || nudgeQ.includes(inst)) return;
+  nudgeQ.push(inst); pumpNudge();
+}
+async function pumpNudge() {
+  if (nudging || !nudgeQ.length) return;
+  nudging = nudgeQ.shift();
+  try {
+    if (nudging.tabId != null && !nudging.frame) {
+      await chrome.tabs.update(nudging.tabId, { active: true });
+      const t0 = Date.now();
+      // A screenshot requested while the tab was hidden can hang even after it is shown, so ask again now that it is visible.
+      while (!nudging.frame && nudging.tabId != null && Date.now() - t0 < 3000) { await sleep(120); await probe(nudging); }
+      // Still nothing: a minimized helper window may not paint on this platform. Bring it back (unfocused) and try again.
+      if (!nudging.frame && nudging.tabId != null && await restoreWindow()) {
+        const t1 = Date.now();
+        while (!nudging.frame && nudging.tabId != null && Date.now() - t1 < 3000) { await sleep(150); await probe(nudging); }
+      }
+    }
+  } catch {}
+  nudging = null;
+  if (nudgeQ.length) pumpNudge(); else activateControllerTab();
 }
 // The helper window's active tab must be the wall's active device: input events are only reliable on the active tab.
 let actT = null;
@@ -273,34 +312,59 @@ function activateControllerTab() {
   clearTimeout(actT);
   actT = setTimeout(() => { const a = state.devices.find(d => d.instanceId === state.activeId); if (a && a.tabId != null) chrome.tabs.update(a.tabId, { active: true }).catch(() => {}); }, 50);
 }
+// Frames are captured at the resolution they are displayed at (clip.scale), so a phone shown at 40% costs a
+// fraction of a full-size capture. Downloads (screenshotDevice) always use the full device resolution.
+const capScaleFor = inst => Math.min(1, Math.max(0.2, +((inst.scale || 1) * (window.devicePixelRatio || 1) * 1.08).toFixed(2)));
+const ACTIVE_MIN = 400, ACTIVE_MAX = 1500, OTHER_MIN = 800, OTHER_MAX = 4000, MAX_INFLIGHT = 3;
+let inflight = 0;
+async function probe(inst) {
+  if (inst.tabId == null || inst.frame) return;
+  try {
+    const [w, h] = dims(inst);
+    const r = await Promise.race([send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: 0, y: 0, width: w, height: h, scale: capScaleFor(inst) } }), sleep(800)]);
+    if (r && r.data && !inst.frame) { inst.lastData = r.data; inst.frame = 'data:image/jpeg;base64,' + r.data; inst.capScale = capScaleFor(inst); ui.frameUpdated(inst); if (inst.status === 'loading') { inst.status = 'ready'; ui.renderPanelState(inst); } }
+  } catch {}
+}
 async function capture(inst, force = false) {
   if (inst.tabId == null || inst.capturing || inst.paused || (inst.offscreen && inst.frame) || inst.status === 'error') return;
   if (!force && !inst.dirty) return;
-  inst.capturing = true; inst.dirty = false;
+  inst.capturing = true; inst.dirty = false; inflight++;
   const started = Date.now();
-  const watchdog = setTimeout(() => { if (inst.capturing && Date.now() - started > 1400) nudge(inst); }, 1500);
+  const watchdog = setTimeout(() => { if (inst.capturing && !inst.frame) nudge(inst); }, 1200);   // first paint stalled → wake the tab
+  const reset = setTimeout(() => { if (inst.capturing) { inst.capturing = false; inflight--; inst.dirty = true; } }, 8000);
   try {
-    const [w, h] = dims(inst);
-    const r = await Promise.race([
-      send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 65, optimizeForSpeed: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('capture timeout')), 6000)),
-    ]);
-    if (r.data === inst.lastData) return;          // unchanged pixels: keep the current image, no flicker
+    const [w, h] = dims(inst); const scale = capScaleFor(inst);
+    const r = await send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 62, optimizeForSpeed: true, clip: { x: 0, y: 0, width: w, height: h, scale } });
+    inst.capScale = scale; inst.lastCaptureMs = Date.now() - started;
+    const changed = r.data !== inst.lastData;
+    // Adaptive cadence: animating content is polled quickly, still content backs off exponentially.
+    const active = inst.instanceId === state.activeId;
+    const [mn, mx] = active ? [ACTIVE_MIN, ACTIVE_MAX] : [OTHER_MIN, OTHER_MAX];
+    inst.stillFor = changed ? 0 : (inst.stillFor || 0) + 1;
+    inst.nextAt = Date.now() + Math.min(mx, mn * Math.pow(2, inst.stillFor));
+    if (!changed) return;                      // unchanged pixels: keep the current image, no flicker
     inst.lastData = r.data; inst.frame = 'data:image/jpeg;base64,' + r.data;
     ui.frameUpdated(inst);
     if (inst.status === 'loading') { inst.status = 'ready'; ui.renderPanelState(inst); }
-  } catch (e) { inst.dirty = true; inst.lastCaptureError = String(e && e.message || e); inst.captureFails = (inst.captureFails || 0) + 1; if (!inst.frame) nudge(inst); }
-  finally { clearTimeout(watchdog); inst.capturing = false; }
+  } catch (e) {
+    inst.dirty = true; inst.lastCaptureError = String(e && e.message || e); inst.captureFails = (inst.captureFails || 0) + 1;
+    inst.nextAt = Date.now() + Math.min(5000, 500 * inst.captureFails);
+    if (!inst.frame) nudge(inst);
+  } finally { clearTimeout(watchdog); clearTimeout(reset); if (inst.capturing) { inst.capturing = false; inflight--; } }
 }
-let tick = 0;
 setInterval(() => {
-  tick++;
-  if (state.frozen) return;                       // Snapshots mode: no periodic captures
+  if (state.frozen) return;                    // Snapshots mode: no periodic captures
+  const now = Date.now();
+  const due = [];
   for (const d of state.devices) {
-    if (d.instanceId === state.activeId) capture(d, tick % 2 === 0);
-    else if (d.dirty || tick % 10 === 0) capture(d, tick % 10 === 0);
+    if (d.tabId == null || d.capturing || d.paused || d.status === 'error') continue;
+    if (d.frame && d.capScale && Math.abs(capScaleFor(d) - d.capScale) > 0.12) d.dirty = true;   // zoom changed: refresh at the new resolution
+    if (d.dirty && now - (d.nextAt || 0) > -(d.instanceId === state.activeId ? ACTIVE_MIN : OTHER_MIN) * 0.6) due.push([0, d]);
+    else if (!d.dirty && now >= (d.nextAt || 0)) due.push([d.instanceId === state.activeId ? 1 : 2, d]);
   }
-}, 250);
+  due.sort((a, b) => a[0] - b[0]);
+  for (const [, d] of due) { if (inflight >= MAX_INFLIGHT) break; capture(d, true); }
+}, 100);
 
 // ---------- device operations ----------
 export async function addDevices(presets) {
@@ -341,7 +405,7 @@ export function setViewport(inst, w, h, dpr) {
 }
 export async function navigateAll(url) {
   url = normalizeUrl(url); if (!url) return;
-  state.url = url; navGuard = url; ui.setUrl(url); pushRecent(url);
+  state.url = url; ui.setUrl(url); pushRecent(url);
   for (const d of state.devices) {
     d.url = url; d.errorKind = '';
     if (d.tabId != null) { d.status = 'loading'; ui.renderPanelState(d); send(d.tabId, 'Page.navigate', { url }).then(r => { if (r && r.errorText) setError(d, r.errorText); }).catch(() => {}); }
@@ -474,7 +538,7 @@ export async function screenshotFullPage(inst) {
   download(`${slug(inst.name)}-${w}x${h}-full.png`, 'data:image/png;base64,' + r.data);
   inst.dirty = true;
 }
-export async function captureAllOnce() { for (const d of state.devices) { d.dirty = true; await capture(d, true); } }
+export async function captureAllOnce() { for (const d of state.devices) { d.dirty = true; d.lastData = null; await capture(d, true); } }
 export async function screenshotAll(full = false) {
   for (const d of state.devices) if (d.tabId != null) { await (full ? screenshotFullPage(d) : screenshotDevice(d)); await new Promise(r => setTimeout(r, 300)); }
 }

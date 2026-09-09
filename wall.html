@@ -26,14 +26,13 @@
     <label class="switch" data-tip="Typed text is mirrored into the matching field"><input type="checkbox" data-sync="input"><i></i><span>Input</span></label>
   </div>
   <button class="btn primary lg" id="add" data-tip="Add devices (A)"></button>
-  <button class="btn lg icon-only" id="moreBtn" data-pop="morePop" data-tip="More"></button>
+  <button class="btn lg icon-only" id="settingsBtn" data-pop="settingsPop" data-tip="Settings"></button>
 </header>
 
 <div id="second" class="bar bar-second">
   <div class="chips" id="setChips"></div>
   <div class="tools">
-    <button class="btn dd" id="layoutBtn" data-pop="layoutPop" data-tip="Canvas layout"></button>
-    <button class="btn dd" id="zoomBtn" data-pop="zoomPop" data-tip="Zoom"></button>
+    <button class="btn dd" id="viewBtn" data-pop="viewPop" data-tip="Layout, zoom and frame style"></button>
     <label class="switch big" data-tip="Realistic device frames"><input type="checkbox" id="framesToggle"><i></i><span>Frames</span></label>
     <button class="btn" id="captureBtn" data-pop="capturePop" data-tip="Capture screenshots"></button>
     <button class="btn" id="recordBtn" data-tip="Record the wall as a video"></button>
@@ -55,10 +54,7 @@
 
 <footer id="status" class="bar bar-bottom">
   <div class="fb-left">
-    <button class="btn" id="devicesBtn" data-pop="devicesPop" data-tip="Current devices"></button>
-    <button class="btn" id="clearBtn" data-tip="Remove all devices">Clear all</button>
-    <button class="btn" id="saveSetBtn" data-tip="Save current devices as a set">Save set</button>
-    <button class="btn icon-only" id="footMore" data-pop="footPop" data-tip="Breakpoints, sessions, theme"></button>
+    <button class="btn dd" id="devicesBtn" data-pop="devicesPop" data-tip="Devices, sets, breakpoints and sessions"></button>
     <button class="btn sm warn-btn" id="issuesBtn" hidden data-tip="Show responsive issues"></button>
   </div>
   <div class="modes" id="modes">
@@ -76,11 +72,14 @@
 <div id="toast" class="toast" hidden></div>
 
 <!-- popovers -->
-<div id="layoutPop" class="pop menu" hidden>
-  <button data-layout="auto">Auto</button><button data-layout="horizontal">Row</button><button data-layout="grid">Grid</button><button data-layout="free">Free canvas</button>
-</div>
-<div id="zoomPop" class="pop menu" hidden>
-  <button data-zoom="fith">Fit height</button><button data-zoom="fit">Fit all</button><button data-zoom="0.25">25%</button><button data-zoom="0.33">33%</button><button data-zoom="0.5">50%</button><button data-zoom="0.75">75%</button><button data-zoom="1">100%</button>
+<div id="viewPop" class="pop menu" hidden>
+  <div class="menu-row"><span>Layout</span><div class="seg sm" id="layoutSeg"><button data-v="auto">Auto</button><button data-v="horizontal">Row</button><button data-v="grid">Grid</button><button data-v="free">Free</button></div></div>
+  <div class="menu-row"><span>Zoom</span><div class="seg sm" id="zoomSeg"><button data-v="fith">Fit</button><button data-v="fit">Fit all</button><button data-v="0.5">50%</button><button data-v="0.75">75%</button><button data-v="1">100%</button></div></div>
+  <div class="menu-row"><span>Frame style</span><div class="seg sm" id="frameSeg"><button data-v="realistic">Realistic</button><button data-v="minimal">Minimal</button></div></div>
+  <div class="menu-row"><span>Browser UI</span><div class="seg sm" id="browserSeg"><button data-v="auto">Auto</button><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+  <div class="menu-sep"></div>
+  <button data-view="rotateAll">Rotate all devices</button>
+  <button data-view="present">Presentation mode</button>
 </div>
 <div id="capturePop" class="pop menu" hidden>
   <button data-cap="active">Active device</button>
@@ -89,29 +88,25 @@
   <button data-cap="full">Full pages</button>
   <button data-cap="present">Presentation image</button>
 </div>
-<div id="morePop" class="pop menu" hidden>
-  <div class="menu-row"><span>Frame style</span><div class="seg sm" id="frameSeg"><button data-v="realistic">Realistic</button><button data-v="minimal">Minimal</button></div></div>
-  <div class="menu-row"><span>Browser UI</span><div class="seg sm" id="browserSeg"><button data-v="auto">Auto</button><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+<div id="settingsPop" class="pop menu" hidden>
   <div class="menu-row"><span>Theme</span><div class="seg sm" id="themeSeg"><button data-v="dark">Dark</button><button data-v="light">Light</button></div></div>
-  <div class="menu-sep"></div>
-  <button data-more="rotateAll">Rotate all devices</button>
-  <button data-more="present">Presentation mode</button>
-  <button data-more="report">Copy QA report</button>
-  <div class="menu-sep"></div>
   <label class="row-toggle" data-tip="Send an iPhone/Android user agent. Off by default: sites like LinkedIn bind sessions to the user agent and may log you out."><span>Mobile user agent</span><input type="checkbox" id="mobileUA"><i></i></label>
   <div class="menu-row"><span>Auto reload</span><select id="auto"><option value="0">Off</option><option value="5">5s</option><option value="15">15s</option><option value="60">60s</option></select></div>
   <div class="menu-sep"></div>
+  <button data-more="report">Copy QA report</button>
   <button data-more="about">About &amp; privacy</button>
 </div>
-<div id="footPop" class="pop menu" hidden>
-  <button data-foot="breakpoints">Breakpoints…</button>
-  <button data-foot="saveSession">Save session…</button>
-  <div class="menu-row"><span>Sessions</span><select id="sessions"></select></div>
-</div>
 <div id="devicesPop" class="pop wide" hidden>
-  <div class="pop-title">Current devices <span class="muted" id="devCount"></span></div>
+  <div class="pop-title">Devices <span class="muted" id="devCount"></span></div>
   <div id="devList" class="devlist-pop"></div>
   <div class="pop-hint">Drag to reorder · click to activate</div>
+  <div class="pop-acts">
+    <button class="btn sm" id="saveSetBtn" data-tip="Save these devices as a set"></button>
+    <button class="btn sm" id="bpBtn" data-tip="Add breakpoint widths"></button>
+    <button class="btn sm" id="saveSessionBtn" data-tip="Save URL, devices and layout"></button>
+    <button class="btn sm danger-btn" id="clearBtn" data-tip="Remove all devices"></button>
+  </div>
+  <div class="menu-row sessions-row"><span>Sessions</span><select id="sessions"></select></div>
 </div>
 <div id="bpPop" class="pop wide" hidden>
   <div class="pop-title">Breakpoints</div>
@@ -123,6 +118,7 @@
 <div id="setsPop" class="pop menu" hidden></div>
 <div id="devMenu" class="pop menu" hidden>
   <button data-dm="reload">Reload device</button>
+  <button data-dm="rotate">Rotate device</button>
   <button data-dm="pause">Pause rendering</button>
   <button data-dm="focus">Focus device</button>
   <div class="menu-sep"></div>
@@ -190,12 +186,7 @@
       <span class="os-ic"></span>
       <span class="name"></span>
       <span class="grow"></span>
-      <span class="hover-acts">
-        <button data-act="reload" data-tip="Reload device"></button>
-        <button data-act="focus" data-tip="Focus device"></button>
-        <button data-act="shot" data-tip="Capture screenshot"></button>
-        <button data-act="menu" data-tip="More actions"></button>
-      </span>
+      <button data-act="menu" class="menu-btn" data-tip="Device actions"></button>
       <button data-act="rotate" data-tip="Rotate device"></button>
       <button data-act="remove" data-tip="Remove device"></button>
     </div>

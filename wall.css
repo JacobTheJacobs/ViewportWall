@@ -53,7 +53,7 @@ button{cursor:pointer}
 .icon-btn.sm{width:26px;height:26px}
 .link{background:none;border:0;color:var(--accent);padding:0 4px;font-size:13px}
 .seg{display:inline-flex;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:9px;padding:2px}
-.seg button{border:0;background:transparent;color:var(--text-muted);padding:4px 10px;border-radius:7px;font-size:13px;transition:background var(--t-fast),color var(--t-fast)}
+.seg button{border:0;background:transparent;color:var(--text-muted);padding:4px 10px;white-space:nowrap;border-radius:7px;font-size:13px;transition:background var(--t-fast),color var(--t-fast)}
 .seg button.on{background:var(--bg-elevated);color:var(--text-primary);box-shadow:var(--shadow-sm)}
 /* switch */
 .switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;color:var(--text-primary);font-weight:500}
@@ -83,7 +83,7 @@ button{cursor:pointer}
 #url{flex:1;min-width:0;border:0;background:transparent;height:100%;font-size:15px;color:var(--text-primary);outline:none}
 .syncgroup{display:flex;align-items:center;gap:14px;flex:none}
 .sync-lbl{color:var(--text-secondary);font-weight:500}
-.chips{display:flex;gap:8px;align-items:center;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.chips{display:flex;gap:8px;align-items:center;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;padding-right:20px;mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
 .chips::-webkit-scrollbar{display:none}
 .chip{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;border:1px solid var(--border-subtle);background:var(--bg-elevated);color:var(--text-primary);white-space:nowrap;font-weight:500;flex:none;transition:background var(--t-fast),border-color var(--t-fast)}
 .chip:hover{background:var(--bg-hover);border-color:var(--border-strong)}
@@ -126,9 +126,9 @@ button{cursor:pointer}
 .label .grow{display:none}
 .label button{width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:var(--text-muted);display:inline-flex;align-items:center;justify-content:center;flex:none;transition:background var(--t-fast),color var(--t-fast)}
 .label button:hover{background:var(--bg-hover);color:var(--text-primary)}
-.hover-acts{position:absolute;right:62px;top:-2px;display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:var(--bg-panel);border:1px solid var(--border-subtle);box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity var(--t-fast);z-index:4}
-.panel:hover .hover-acts,.hover-acts:focus-within{opacity:1;pointer-events:auto}
-.hover-acts button{width:28px;height:28px}
+.label .menu-btn{opacity:.55;transition:opacity var(--t-fast)}
+.panel:hover .label .menu-btn,.panel.active .label .menu-btn,.label .menu-btn:focus-visible{opacity:1}
+.panel.narrow .label [data-act=rotate]{display:none}
 .meta{display:flex;align-items:center;gap:8px;height:22px;margin-bottom:10px;font-size:13px;color:var(--text-secondary);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
 .meta .sep{width:1px;height:14px;background:var(--border-strong)}
 .panel.narrow .meta .state span{display:none}
@@ -236,6 +236,11 @@ button{cursor:pointer}
 .thumb span{max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pop{position:fixed;z-index:30;min-width:230px;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:8px;animation:pop var(--t-fast) var(--ease)}
 .pop.wide{width:400px}
+#viewPop{min-width:380px}
+.pop-acts{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 4px 4px}
+.pop-acts .btn{justify-content:center}
+.danger-btn:hover{color:var(--danger);border-color:var(--danger)}
+.sessions-row{padding-top:8px}
 @keyframes pop{from{opacity:0;transform:scale(.97) translateY(-4px)}to{opacity:1;transform:none}}
 .pop-title{font-weight:600;padding:6px 10px 10px;display:flex;gap:8px}
 .pop-sub{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);padding:10px 10px 4px;display:flex;justify-content:space-between;align-items:center}
@@ -258,7 +263,7 @@ button{cursor:pointer}
 .chips2{display:flex;flex-wrap:wrap;gap:6px;padding:4px 10px}
 .chips2 .chip{height:30px;padding:0 12px;border-radius:15px}
 .chips2 .muted{font-size:12.5px}
-.devlist-pop{display:flex;flex-direction:column;gap:2px;max-height:50vh;overflow:auto}
+.devlist-pop{display:flex;flex-direction:column;gap:2px;max-height:50vh;overflow:hidden auto;scrollbar-width:thin}
 .sb-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);color:var(--text-secondary);cursor:pointer;user-select:none;border:0;background:none;width:100%;text-align:left;font-weight:500}
 .sb-item:hover{background:var(--bg-hover);color:var(--text-primary)}
 .sb-item.on{background:var(--accent-soft);color:var(--text-primary)}
@@ -317,7 +322,7 @@ button{cursor:pointer}
 [data-tip]::after{content:attr(data-tip);position:absolute;left:50%;top:100%;transform:translate(-50%,6px);background:#0b0e14;color:#fff;font-size:12px;padding:5px 9px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity var(--t-fast);z-index:60;font-weight:400;max-width:320px;white-space:normal;width:max-content}
 [data-tip]:hover::after{opacity:1;transition-delay:350ms}
 .bar-bottom [data-tip]::after,.label [data-tip]::after{top:auto;bottom:100%;transform:translate(-50%,-6px)}
-body.present #top,body.present #second,body.present #status,body.present .hover-acts,body.present .grip,body.present .issues,body.present .label button,body.present .meta .state{display:none!important}
+body.present #top,body.present #second,body.present #status,body.present .grip,body.present .issues,body.present .label button,body.present .meta .state{display:none!important}
 body.present #canvas{background-image:none;background:radial-gradient(1200px 600px at 50% 0%,rgba(61,123,255,.12),transparent 60%),var(--bg-canvas)}
 body.present .present-title{display:block!important;text-align:center;padding:36px 0 0}
 .present-title h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.02em}
