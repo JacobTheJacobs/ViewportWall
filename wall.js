@@ -153,8 +153,7 @@ function rebuildAll() { for (const d of state.devices) { buildFrame(d); renderPa
 // ---------- modes ----------
 function setMode(m, id) {
   mode = m; $$('#modes button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
-  state.frozen = m === 'snapshots';
-  if (m === 'snapshots') { C.captureAllOnce(); toast('Snapshots: devices frozen. Switch to Live to resume.'); }
+  state.frozen = $('#freeze').checked;
   if (m === 'focus') { const t = id || state.activeId || state.devices[0]?.instanceId; focusIds = t ? [t] : []; if (t) C.setActive(t); }
   else if (m === 'compare') {
     const a = id || state.activeId || state.devices[0]?.instanceId;
@@ -163,7 +162,8 @@ function setMode(m, id) {
   } else focusIds = [];
   $('#thumbs').hidden = !focusIds.length; relayout();
 }
-$('#modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
+$('#modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(mode === b.dataset.mode ? 'live' : b.dataset.mode); });
+$('#freeze').addEventListener('change', e => { state.frozen = e.target.checked; if (state.frozen) { C.captureAllOnce(); toast('Live updates paused'); } else toast('Live updates resumed'); });
 function renderThumbs() {
   const box = $('#thumbs'); if (!focusIds.length) { box.innerHTML = ''; return; }
   box.innerHTML = state.devices.map(d => `<button class="thumb ${focusIds.includes(d.instanceId) ? 'on' : ''}" data-id="${d.instanceId}" data-tip="${mode === 'compare' ? 'Swap into comparison' : 'Focus'} ${esc(d.name)}"><img src="${d.frame || ''}" alt=""><span>${esc(d.name)}</span></button>`).join('');
