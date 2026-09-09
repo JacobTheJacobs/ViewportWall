@@ -20,7 +20,7 @@
   </div>
   <div class="tools">
     <button class="btn dd" id="viewBtn" data-pop="viewPop" data-tip="Layout, zoom and frame style"></button>
-    <label class="switch big" data-tip="Realistic device frames"><input type="checkbox" id="framesToggle"><i></i><span>Frames</span></label>
+    <label class="switch big" data-tip="Sync on: navigation, scroll, clicks and typing in one device happen on every device. Off: only the device you touch."><input type="checkbox" id="syncToggle"><i></i><span>Sync</span></label>
     <button class="btn" id="captureBtn" data-pop="capturePop" data-tip="Capture screenshots"></button>
     <button class="btn" id="recordBtn" data-tip="Record the wall as a video"></button>
   </div>
@@ -58,7 +58,7 @@
 <div id="viewPop" class="pop menu" hidden>
   <div class="menu-row"><span>Layout</span><div class="seg sm" id="layoutSeg"><button data-v="auto">Auto</button><button data-v="horizontal">Row</button><button data-v="grid">Grid</button><button data-v="free">Free</button></div></div>
   <div class="menu-row"><span>Zoom</span><div class="seg sm" id="zoomSeg"><button data-v="fith">Fit</button><button data-v="fit">Fit all</button><button data-v="0.5">50%</button><button data-v="0.75">75%</button><button data-v="1">100%</button></div></div>
-  <div class="menu-row"><span>Frame style</span><div class="seg sm" id="frameSeg"><button data-v="realistic">Realistic</button><button data-v="minimal">Minimal</button></div></div>
+  <div class="menu-row"><span>Frame style</span><div class="seg sm" id="frameSeg"><button data-v="realistic">Realistic</button><button data-v="minimal">Minimal</button><button data-v="none">None</button></div></div>
   <div class="menu-row"><span>Browser UI</span><div class="seg sm" id="browserSeg"><button data-v="auto">Auto</button><button data-v="on">On</button><button data-v="off">Off</button></div></div>
   <div class="menu-sep"></div>
   <button data-view="rotateAll">Rotate all devices</button>

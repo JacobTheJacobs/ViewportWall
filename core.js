@@ -7,7 +7,7 @@ export const state = {
   url: '',
   devices: [],
   activeId: null,
-  sync: { navigation: true, scroll: true, clicks: true, input: true, reload: true },   // always on; the wall is one page on many screens
+  sync: { navigation: true, scroll: true, clicks: true, input: true, reload: true },   // one switch: on = the wall is one page on many screens, off = only the touched device reacts
   layout: { type: 'auto', zoom: 'fith', frames: 'realistic', frameStyle: 'realistic', browser: 'auto', theme: 'dark', mobileUA: false, render: 'auto' },   // render: auto | iframe | cdp
   frozen: false,
   groupId: null,
@@ -39,15 +39,19 @@ export async function loadPrefs() {
   customDevices = p.customDevices || [];
   savedSets = p.savedSets || [];
   if (p.prefs) Object.assign(state.layout, p.prefs.layout || {});
+  if (p.prefs?.sync && (p.prefs.uiVersion || 0) >= 4) setSync(p.prefs.sync.navigation !== false, false);
   if (!['auto', 'horizontal', 'grid', 'free', 'focus'].includes(state.layout.type)) state.layout.type = 'auto';
   if (typeof state.layout.frames === 'boolean' || !p.prefs?.uiVersion) { state.layout.frames = 'realistic'; state.layout.browser = 'auto'; }
   if ((p.prefs?.uiVersion || 0) < 3) { state.layout.zoom = 'fith'; state.layout.type = 'auto'; }
   return p;
 }
 export function savePrefs() {
-  chrome.storage.local.set({ prefs: { sync: state.sync, layout: state.layout, uiVersion: 3 }, lastDevices: state.devices.map(instToPreset) });
+  chrome.storage.local.set({ prefs: { sync: state.sync, layout: state.layout, uiVersion: 4 }, lastDevices: state.devices.map(instToPreset) });
 }
 export const persist = obj => chrome.storage.local.set(obj);
+export function setSync(on, save = true) { for (const k of Object.keys(state.sync)) state.sync[k] = !!on; if (save) savePrefs(); }
+// Something real happened (navigation, load, input, sync): capture now instead of waiting out the idle backoff.
+export function mark(inst) { inst.dirty = true; inst.stillFor = 0; inst.nextAt = 0; }
 export const allPresets = () => [...DEVICES, ...customDevices];
 export const findPreset = id => allPresets().find(d => d.id === id);
 export function addCustomDevice(dev) { customDevices.push(dev); persist({ customDevices }); }
@@ -206,17 +210,17 @@ chrome.debugger.onEvent.addListener((src, method, params) => {
     const url = params.frame.url;
     if (params.frame.unreachableUrl) { inst.url = params.frame.unreachableUrl; if (inst.status !== 'error') setError(inst, 'Chrome could not load ' + params.frame.unreachableUrl, 'NAVIGATION_FAILED'); return; }
     if (url === 'about:blank' || !isWebUrl(url)) { if (!isWebUrl(url) && url !== 'about:blank' && inst.status !== 'error') setError(inst, 'Chrome could not load ' + (inst.url || state.url), 'NAVIGATION_FAILED'); return; }
-    inst.url = url; inst.status = 'loading'; inst.errorKind = ''; ui.renderPanelState(inst);
+    inst.url = url; inst.status = 'loading'; inst.errorKind = ''; ui.renderPanelState(inst); mark(inst);
     if (isActive) onActiveNavigated(url);
   } else if (method === 'Page.loadEventFired') {
     if (inst.status !== 'error') { inst.status = 'ready'; ui.renderPanelState(inst); }
-    inst.dirty = true; setTimeout(() => { inst.dirty = true; }, 400);
+    mark(inst); setTimeout(() => mark(inst), 400);
   } else if (method === 'Page.screencastFrame') {
     send(src.tabId, 'Page.screencastFrameAck', { sessionId: params.sessionId }).catch(() => {});
-    inst.dirty = true; inst.painted = Date.now();
+    inst.dirty = true; inst.painted = Date.now(); inst.nextAt = Math.min(inst.nextAt || 0, Date.now() + (isActive ? ACTIVE_MIN : OTHER_MIN) / 2);   // pixels moved: cut the backoff
   } else if (method === 'Runtime.bindingCalled' && params.name === '__vwReport') {
     let data; try { data = JSON.parse(params.payload); } catch { return; }
-    inst.dirty = true; inst.pageChanged = true;
+    mark(inst); inst.pageChanged = true;
     handleReport(inst, data);
   }
 });
@@ -224,9 +228,10 @@ function handleReport(inst, data) {
   const isActive = inst.instanceId === state.activeId;
   if (data.type === 'check') { inst.issues = data.issues || []; ui.renderPanelState(inst); ui.renderIssues(); return; }
   if (data.type === 'focus') { if (!isActive) setActive(inst.instanceId); return; }
+  if (data.type === 'nav' && inst.url !== data.url) { inst.url = data.url; ui.renderPanelState(inst); }
   if (!isActive) return;
   if (data.type === 'scroll' && state.sync.scroll) syncScroll(inst, data.ratio);
-  if (data.type === 'nav') { if (inst.url !== data.url) { inst.url = data.url; ui.renderPanelState(inst); } onActiveNavigated(data.url); }
+  if (data.type === 'nav') onActiveNavigated(data.url);
 }
 // iframe devices: the agent is a content script; reports arrive as runtime messages tagged with the frame's name (= instanceId).
 chrome.runtime.onMessage.addListener((msg, sender) => {
@@ -259,9 +264,13 @@ function onActiveNavigated(url) {
   if (!url || url === state.url || !isWebUrl(url)) return;
   state.url = url; ui.setUrl(url); pushRecent(url);
   if (!state.sync.navigation) return;
+  const go = d => { d.url = url; d.status = 'loading'; ui.renderPanelState(d); if (d.render === 'iframe') ui.setFrameUrl(d, url); else send(d.tabId, 'Page.navigate', { url }).then(() => mark(d)).catch(() => {}); };
   for (const d of state.devices) {
     if (d.instanceId === state.activeId || !hosted(d) || d.url === url) continue;
-    d.url = url; if (d.render === 'iframe') ui.setFrameUrl(d, url); else send(d.tabId, 'Page.navigate', { url }).catch(() => {});
+    // A synced click is probably already navigating this device (in-app routing keeps its state and is faster than a
+    // fresh load): give it a moment and only force the URL if it did not arrive on its own.
+    if (Date.now() - (d.clickedAt || 0) < 2500) setTimeout(() => { if (hosted(d) && d.url !== url && state.url === url) go(d); }, 1200);
+    else go(d);
   }
 }
 let scrollTimer = null, pendingRatio = null;
@@ -272,7 +281,7 @@ function syncScroll(from, ratio) {
     scrollTimer = null; const r = pendingRatio;
     for (const d of state.devices) {
       if (d === from || !hosted(d) || d.paused) continue;
-      evalIn(d, `(${scrollToRatio})(${r})`, scrollToRatio, [r]).then(() => { d.dirty = true; }).catch(() => {});
+      evalIn(d, `(${scrollToRatio})(${r})`, scrollToRatio, [r]).then(() => mark(d)).catch(() => {});
     }
   }, 80);
 }
@@ -449,7 +458,7 @@ function pushRecent(url) {
 }
 export function navHistoryOne(inst, dir) { if (hosted(inst)) evalIn(inst, `(${historyGo})(${dir})`, historyGo, [dir]).catch(() => {}); }
 export function navHistory(dir) {
-  for (const d of state.devices) navHistoryOne(d, dir);
+  for (const d of (state.sync.navigation ? state.devices : state.devices.filter(d => d.instanceId === state.activeId))) navHistoryOne(d, dir);
 }
 export function reloadAll(hard = false) {
   const list = state.sync.reload ? state.devices : state.devices.filter(d => d.instanceId === state.activeId);
@@ -477,7 +486,7 @@ function wireInput(inst, screen) {
   };
   const refreshVV = async () => { try { inst.vv = (await send(inst.tabId, 'Page.getLayoutMetrics')).cssVisualViewport; } catch {} };
   const mods = e => (e.altKey ? 1 : 0) | (e.ctrlKey ? 2 : 0) | (e.metaKey ? 4 : 0) | (e.shiftKey ? 8 : 0);
-  const fin = () => { inst.dirty = true; };
+  const fin = () => mark(inst);
   // Input events are serialized per device so a down/up pair never arrives out of order.
   const queue = fn => { inst.q = (inst.q || Promise.resolve()).then(fn).then(fin).catch(() => {}); };
   const mouse = (type, e, extra = {}) => {
@@ -525,13 +534,14 @@ async function syncClick(from, { x, y }) {
   if (!desc || !(desc.id || desc.testid || desc.href || desc.aria || desc.text)) return;
   for (const d of state.devices) {
     if (d === from || !hosted(d) || d.paused) continue;
-    evalIn(d, `(${findAndClick})(${JSON.stringify(desc)})`, findAndClick, [desc]).then(() => { d.dirty = true; }).catch(() => {});
+    d.clickedAt = Date.now();
+    evalIn(d, `(${findAndClick})(${JSON.stringify(desc)})`, findAndClick, [desc]).then(() => mark(d)).catch(() => {});
   }
 }
 async function syncInput(from) {
   let f; try { f = (await send(from.tabId, 'Runtime.evaluate', { expression: `(()=>{const a=document.activeElement;if(!a||!('value' in a))return null;return {id:a.id,name:a.name||'',testid:a.getAttribute('data-testid')||'',ph:a.placeholder||'',type:a.type||'',value:a.value}})()`, returnByValue: true })).result.value; } catch { return; }
   if (!f) return;
-  for (const d of state.devices) { if (d === from || !hosted(d) || d.paused) continue; evalIn(d, `(${setField})(${JSON.stringify(f)})`, setField, [f]).then(() => { d.dirty = true; }).catch(() => {}); }
+  for (const d of state.devices) { if (d === from || !hosted(d) || d.paused) continue; evalIn(d, `(${setField})(${JSON.stringify(f)})`, setField, [f]).then(() => mark(d)).catch(() => {}); }
 }
 
 

@@ -263,8 +263,8 @@ function renderViewBtn(base) {
   $('#viewBtn').innerHTML = icon(L[0], 16) + `<span class="lbl">${L[1]} · ${z === 'fit' ? 'Fit all' : z === 'fith' ? 'Fit' : ''} ${pct}%</span>` + icon('chevron', 14, 'chev');
   setSeg('layoutSeg', state.layout.type); setSeg('zoomSeg', z);
 }
-$('#framesToggle').addEventListener('change', e => { state.layout.frames = e.target.checked ? (state.layout.frameStyle || 'realistic') : 'none'; C.savePrefs(); rebuildAll(); });
-$('#frameSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.frameStyle = v; if (state.layout.frames !== 'none') state.layout.frames = v; setSeg('frameSeg', v); C.savePrefs(); rebuildAll(); });
+$('#syncToggle').addEventListener('change', e => { C.setSync(e.target.checked); toast(e.target.checked ? 'Sync on: every device follows what you do' : 'Sync off: only the device you touch reacts'); });
+$('#frameSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; if (v !== 'none') state.layout.frameStyle = v; state.layout.frames = v; setSeg('frameSeg', v); C.savePrefs(); rebuildAll(); });
 $('#browserSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.browser = v; setSeg('browserSeg', v); C.savePrefs(); rebuildAll(); });
 $('#renderSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v || v === state.layout.render) return; setSeg('renderSeg', v); C.setRenderMode(v); toast(v === 'iframe' ? 'Interactive iframes: real-time, but no DPR / touch / user-agent emulation and only on sites that allow framing' : v === 'cdp' ? 'Full device emulation for every device' : 'Auto: iframes for local dev servers, emulated tabs elsewhere'); });
 $('#themeSeg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; state.layout.theme = v; applyTheme(); C.savePrefs(); });
@@ -404,7 +404,7 @@ function renderStatus() {
   $('#empty').hidden = n > 0;
 }
 function syncUIFromState() {
-  $('#framesToggle').checked = state.layout.frames !== 'none'; setSeg('frameSeg', state.layout.frameStyle || 'realistic'); setSeg('browserSeg', state.layout.browser); applyTheme(); renderViewBtn();
+  $('#syncToggle').checked = !!state.sync.navigation; setSeg('frameSeg', state.layout.frames === 'none' ? 'none' : (state.layout.frameStyle || 'realistic')); setSeg('browserSeg', state.layout.browser); applyTheme(); renderViewBtn();
   $('#mobileUA').checked = !!state.layout.mobileUA; setSeg('renderSeg', state.layout.render || 'auto'); $('#url').value = state.url;
   rebuildAll(); renderSets(); renderDeviceList(); renderStatus();
 }
