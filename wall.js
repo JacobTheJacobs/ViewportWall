@@ -494,8 +494,10 @@ Object.assign(ui, {
 async function boot() {
   const prefs = await C.loadPrefs();
   const q = new URLSearchParams(location.search);
-  state.url = C.normalizeUrl(q.get('url') || (prefs.recentUrls || [])[0] || 'http://localhost:3000');
-  ui.renderRecent(prefs.recentUrls); renderSessions(); syncUIFromState();
+  const recent = (prefs.recentUrls || []).filter(C.isWebUrl);
+  if (recent.length !== (prefs.recentUrls || []).length) C.persist({ recentUrls: recent });
+  state.url = C.normalizeUrl(q.get('url')) || recent[0] || 'http://localhost:3000';
+  ui.renderRecent(recent); renderSessions(); syncUIFromState();
   if (!prefs.onboarded) $('#onboard').hidden = false;
   if (q.get('set')) await C.applySet(q.get('set'));
   else if (q.get('pick')) openPicker();

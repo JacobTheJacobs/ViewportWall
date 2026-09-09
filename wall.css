@@ -67,10 +67,10 @@ button{cursor:pointer}
 
 /* ============ Body / sidebar / canvas ============ */
 #body{flex:1;display:flex;min-height:0}
-#sidebar{width:232px;flex:none;background:var(--bg-panel);border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;overflow:hidden;transition:width var(--t-med) var(--ease)}
+#sidebar{width:232px;flex:none;overflow-x:hidden;background:var(--bg-panel);border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;overflow:hidden;transition:width var(--t-med) var(--ease)}
 body.sb-collapsed #sidebar{width:0;border-right-color:transparent}
 .sb-section{padding:var(--sp-3) var(--sp-3) var(--sp-2);min-width:232px}
-.sb-section.grow{flex:1;overflow:auto}
+.sb-section.grow{flex:1;overflow-y:auto;overflow-x:hidden}
 .sb-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:6px;display:flex;justify-content:space-between}
 .sb-title .count{background:var(--bg-elevated);border-radius:10px;padding:0 7px;color:var(--text-secondary);font-weight:500;letter-spacing:0}
 .sb-list{display:flex;flex-direction:column;gap:2px}

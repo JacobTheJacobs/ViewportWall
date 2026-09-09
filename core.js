@@ -199,7 +199,7 @@ chrome.debugger.onEvent.addListener((src, method, params) => {
   if (method === 'Page.frameNavigated' && !params.frame.parentId) {
     const url = params.frame.url;
     if (params.frame.unreachableUrl) { inst.url = params.frame.unreachableUrl; if (inst.status !== 'error') setError(inst, 'Chrome could not load ' + params.frame.unreachableUrl, 'NAVIGATION_FAILED'); return; }
-    if (url === 'about:blank') return;
+    if (url === 'about:blank' || !isWebUrl(url)) { if (!isWebUrl(url) && url !== 'about:blank' && inst.status !== 'error') setError(inst, 'Chrome could not load ' + (inst.url || state.url), 'NAVIGATION_FAILED'); return; }
     inst.url = url; inst.status = 'loading'; inst.errorKind = ''; ui.renderPanelState(inst);
     if (isActive) onActiveNavigated(url);
   } else if (method === 'Page.loadEventFired') {
@@ -225,9 +225,10 @@ chrome.tabs.onRemoved.addListener(tabId => {
   if (inst) { inst.tabId = null; setError(inst, 'Browser target closed.', 'TARGET_CLOSED'); }
 });
 
+export const isWebUrl = u => /^(https?|file):\/\//i.test(u || '') && !/^https?:\/\/chrome-error/i.test(u);
 let navGuard = '';
 function onActiveNavigated(url) {
-  if (!url || url === state.url) return;
+  if (!url || url === state.url || !isWebUrl(url)) return;
   state.url = url; ui.setUrl(url); pushRecent(url);
   if (!state.sync.navigation) return;
   if (navGuard === url) return; navGuard = url;
@@ -318,13 +319,14 @@ export async function navigateAll(url) {
   }
 }
 export function normalizeUrl(u) {
-  u = (u || '').trim(); if (!u) return '';
+  u = (u || '').trim(); if (!u || /chrome-error|^chrome:|^about:/i.test(u)) return '';
   if (!/^[a-z]+:\/\//i.test(u)) u = (/^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(u) ? 'http://' : 'https://') + u;
   return u;
 }
 function pushRecent(url) {
+  if (!isWebUrl(url)) return;
   chrome.storage.local.get('recentUrls').then(({ recentUrls = [] }) => {
-    recentUrls = [url, ...recentUrls.filter(u => u !== url)].slice(0, 20);
+    recentUrls = [url, ...recentUrls.filter(u => u !== url && isWebUrl(u))].slice(0, 20);
     chrome.storage.local.set({ recentUrls }); ui.renderRecent(recentUrls);
   });
 }
