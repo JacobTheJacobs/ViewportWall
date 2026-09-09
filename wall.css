@@ -246,7 +246,7 @@ button{cursor:pointer}
 .ov-title{font-weight:600;font-size:16px}
 .ov-msg{color:var(--text-secondary);font-size:13px;max-width:280px;word-break:break-word}
 .ov-text{color:var(--text-secondary)}
-.panel.loading .ov-loading{display:flex}
+.panel.loading:not(.has-frame) .ov-loading{display:flex}
 .panel.error .ov-error{display:flex}
 .panel.paused .ov-paused{display:flex;background:rgba(20,22,28,.55);color:#fff}
 .spinner{width:28px;height:28px;border-radius:50%;border:2.5px solid var(--border-strong);border-top-color:var(--accent);animation:spin .8s linear infinite}

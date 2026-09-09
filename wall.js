@@ -84,7 +84,7 @@ function renderPanelState(d) {
   el.querySelector('.dims').textContent = `${w} × ${h}`;
   el.querySelector('.dpr').textContent = `DPR ${d.dpr}`;
   el.querySelector('.os').textContent = osLabel(d) + (d.render === 'iframe' ? ' · Interactive' : '');
-  el.className = `panel ${d.status}${d.paused ? ' paused' : ''}${state.activeId === d.instanceId ? ' active' : ''}${el.classList.contains('narrow') ? ' narrow' : ''}`;
+  el.className = `panel ${d.status}${d.paused ? ' paused' : ''}${state.activeId === d.instanceId ? ' active' : ''}${el.classList.contains('narrow') ? ' narrow' : ''}${d.frame ? ' has-frame' : ''}`;
   el.querySelector('.state').innerHTML = '<span></span>'; el.querySelector('.state span').textContent = d.paused ? 'Paused' : d.status === 'error' ? (d.errorTitle || 'Error') : d.status === 'loading' ? 'Loading' : state.activeId === d.instanceId ? 'Active' : 'Synced';
   el.classList.toggle('iframe-mode', d.render === 'iframe');
   if (d.status === 'error') { el.querySelector('.ov-title').textContent = d.errorTitle || "Couldn't load page"; el.querySelector('.ov-msg').textContent = d.errorKind === 'detached' ? d.errorMsg : `${hostOf(d.url || state.url)} ${d.errorMsg}`; }
@@ -108,7 +108,7 @@ function setFrameUrl(d, url, force) { const f = panels.get(d.instanceId)?.queryS
 window.addEventListener('blur', () => setTimeout(() => { const a = document.activeElement; if (a && a.tagName === 'IFRAME' && a.name && inst(a.name) && state.activeId !== a.name) C.setActive(a.name); }, 0));
 function frameUpdated(d) {
   const img = panels.get(d.instanceId)?.querySelector('img'); if (!img) return;
-  img.decoding = 'async'; img.src = d.frame;
+  img.decoding = 'async'; img.src = d.frame; panels.get(d.instanceId).classList.add('has-frame');
   if (focusIds.length) { const t = $(`#thumbs [data-id="${d.instanceId}"] img`); if (t) t.src = d.frame; }
 }
 function setActiveUI(id) {
@@ -170,7 +170,7 @@ function rebuildAll() { for (const d of state.devices) { buildFrame(d); renderPa
 // ---------- modes ----------
 function setMode(m, id) {
   mode = m;
-  state.frozen = $('#freeze').checked;
+  C.setFrozen($('#freeze').checked);
   if (m === 'focus') { const t = id || state.activeId || state.devices[0]?.instanceId; focusIds = t ? [t] : []; if (t) C.setActive(t); }
   else if (m === 'compare') {
     const a = id || state.activeId || state.devices[0]?.instanceId;
@@ -179,7 +179,7 @@ function setMode(m, id) {
   } else focusIds = [];
   $('#thumbs').hidden = !focusIds.length; relayout();
 }
-$('#freeze').addEventListener('change', e => { state.frozen = e.target.checked; if (state.frozen) { C.captureAllOnce(); toast('Live updates paused'); } else toast('Live updates resumed'); });
+$('#freeze').addEventListener('change', e => { C.setFrozen(e.target.checked); if (state.frozen) { C.captureAllOnce(); toast('Live updates paused'); } else toast('Live updates resumed'); });
 function renderThumbs() {
   const box = $('#thumbs'); if (!focusIds.length) { box.innerHTML = ''; return; }
   box.innerHTML = state.devices.map(d => `<button class="thumb ${focusIds.includes(d.instanceId) ? 'on' : ''}" data-id="${d.instanceId}" data-tip="${mode === 'compare' ? 'Swap into comparison' : 'Focus'} ${esc(d.name)}"><img src="${d.frame || ''}" alt=""><span>${esc(d.name)}</span></button>`).join('');

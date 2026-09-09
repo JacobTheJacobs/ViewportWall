@@ -14,12 +14,8 @@ Chrome extension: see one website on many viewports at once, with synchronized n
   - **Interactive** (Auto picks it for `localhost` / `127.0.0.1` / `*.localhost` when the server sends no `X-Frame-Options` or restrictive `frame-ancestors`): the page runs in a live `<iframe>` inside the wall. Real-time and directly interactive, no capture pipeline, but only width/height emulation (no DPR, touch or user-agent) and no screenshots. The wall's host permission for localhost lets the agent script run inside these frames for scroll/navigation sync and issue checks, and gives them access to the site's normal cookies (Chrome's storage-partitioning exemption for extension pages with host permission). Sites that block framing fall back to Full emulation automatically.
   `Emulation.setDeviceMetricsOverride` applies width/height/DPR/mobile/touch/user-agent, so CSS media queries see the real emulated viewport.
   This works on sites that block iframes (`X-Frame-Options`, `frame-ancestors`) and on localhost/staging with your existing cookies.
-- Full-emulation devices show captures (`Page.captureScreenshot`, JPEG, clipped to the visual viewport in document coordinates) taken at the resolution they are displayed at, so a phone shown at 40% costs a fraction of a full capture. How "changed pixels" are detected (`core.js`, `capture()` and the tick loop):
-  1. A 16-pixel `Page.startScreencast` runs on every tab. Each `screencastFrame` event is a compositor-level "something painted" signal that marks the device dirty. It also keeps hidden tabs painting.
-  2. The in-page agent (`agent.js`) reports scroll, navigation and DOM mutations, which also mark the device dirty.
-  3. Dirty devices are captured (at most 3 in flight); every capture's base64 is compared with the previous one and an identical frame is dropped before it touches the DOM, so nothing flickers and nothing decodes.
-  4. Devices that keep returning identical pixels back off exponentially (active device 0.4s → 1.5s, others 0.8s → 4s), which is the idle heartbeat.
-  So a capture is still a poll, but its cadence is driven by paint and DOM signals, and only genuinely different frames are sent to the wall.
+- Full-emulation devices show a live stream: `Page.startScreencast` runs on every tab at the resolution the panel is displayed at (JPEG, `maxWidth`/`maxHeight` = panel size), so a phone shown at 40% costs a fraction of a full frame. Chrome pushes a frame only when the compositor produced one, which is the "pixels changed" signal: a still page sends nothing, a scrolling one streams at the compositor's full rate for the active device and 20/15 fps for the others (`everyNthFrame`). An inactive device that keeps streaming for 3 s (an animation) drops to 10 fps until it is touched or navigates. The screencast also keeps hidden tabs painting. `Page.captureScreenshot` (clipped to the visual viewport in document coordinates) is only a fallback for the first paint and for a device whose agent reported a change without a frame following, plus full-resolution downloads.
+- A device that already shows a page keeps it until the next page paints, so navigation never flashes a spinner.
 - Click a panel to make it active. Mouse, wheel, and keyboard on the active panel are forwarded via `Input.*`.
 - Navigation sync propagates full loads and SPA route changes (pushState/replaceState/popstate/hashchange).
 - Scroll sync uses percentage position (`scrollTop / (scrollHeight - viewportHeight)`).
@@ -53,14 +49,14 @@ Headless Chromium 151 on a 24-core Linux box, `bench2.py` in the test harness. C
 
 | Devices | Mode | Idle CPU static / animated | Scrolling CPU static / animated | RSS static / animated | Frames sent, animated | All devices ready after navigation |
 |---|---|---|---|---|---|---|
-| 1 | Full emulation | 3% / 36% | 12% / 40% | 1.08 / 1.25 GB | 3.0 fps | 0.3 s |
-| 4 | Full emulation | 7% / 130% | 40% / 140% | 1.54 / 2.08 GB | 7.1 fps total | 0.3 s |
-| 8 | Full emulation | 9% / 191% | 45% / 193% | 2.09 / 2.68 GB | 12.5 fps total | 0.3 s |
-| 12 | Full emulation | 9% / 237% | 54% / 239% | 2.61 / 3.22 GB | 11.1 fps total | 0.3 s |
+| 1 | Full emulation | 0% / 70% | 11% / 66% | 1.08 / 1.42 GB | 60 fps | 0.3 s |
+| 4 | Full emulation | 2% / 193% | 30% / 149% | 1.52 / 2.11 GB | 90 fps total | 0.3 s |
+| 8 | Full emulation | 1% / 240% | 105% / 241% | 2.07 / 2.67 GB | 98 fps total | 0.3 s |
+| 12 | Full emulation | 1% / 247% | 112% / 254% | 2.59 / 3.21 GB | 118 fps total | 0.3 s |
 | 4 | Interactive (iframe) | 0% / 20% | 14% / 24% | 1.11 / 1.14 GB | native | 0.3 s |
 | 12 | Interactive (iframe) | 1% / 30% | 21% / 35% | 1.16 / 1.21 GB | native | 0.3 s |
 
-What this says: a static wall is cheap in either mode (the heartbeat costs about 1.5 captures per second for the whole wall, and identical frames are dropped before decoding). Each emulated tab costs roughly 130 MB and, on a page that animates continuously, about 30% of a core for the renderer plus captures, so an animated 12-device wall is heavy; the Snapshots pause in Settings or Interactive mode for local work brings it down. Real sites (YouTube watch page, react.dev, nextjs.org, github.com, threejs.org, MDN, Wikipedia) render and scroll in sync on four devices in the `sites.py` check.
+What this says: a still wall costs nothing in either mode (no frames are sent). Scrolling on the active device streams real frames to every panel, so a 12-device scroll costs about one core. Each emulated tab costs roughly 130 MB and, on a page that animates continuously, most of the cost is the renderers themselves (about 20% of a core each), so an animated 12-device wall is heavy; the Snapshots pause in Settings or Interactive mode for local work brings it down. Real sites (YouTube watch page, react.dev, nextjs.org, github.com, threejs.org, MDN, Wikipedia) render and scroll in sync on four devices in the `sites.py` check.
 
 ## Shortcuts
 
@@ -72,7 +68,7 @@ What this says: a static wall is cheap in either mode (the heartbeat costs about
 manifest.json   MV3 manifest (debugger, tabs, storage, activeTab)
 background.js   opens the wall from the toolbar icon; closes the device tab group when the wall tab closes
 agent.js        in-page agent: scroll/navigation reports, responsive checks (CDP-injected or content script)
-core.js         target manager, rendering modes, CDP emulation, capture loop, sync, screenshots, sessions (no DOM)
+core.js         target manager, rendering modes, CDP emulation, screencast stream + capture fallback, sync, screenshots, sessions (no DOM)
 wall.js         UI: toolbars, menus, canvas layout, picker, focus/compare/presentation
 wall.html/css   structure + design tokens (dark/light)
 frames.js       data-driven device shells, status bars, browser bars, cutouts

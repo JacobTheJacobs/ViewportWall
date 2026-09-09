@@ -186,9 +186,7 @@ async function createTab(inst) {
     await send(tabId, 'Page.addScriptToEvaluateOnNewDocument', { source: INJECT });
     await send(tabId, 'Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {});
     await applyEmulation(inst); await applyProfiles(inst);
-    // A 16px screencast keeps the hidden tab's compositor producing frames (without it, background tabs can stop
-    // painting and screenshots return the stale surface) and each frame is a true "pixels changed" signal.
-    await send(tabId, 'Page.startScreencast', { format: 'jpeg', quality: 1, maxWidth: 16, maxHeight: 16, everyNthFrame: 10 }).catch(() => {});
+    await startCast(inst);
     const r = await send(tabId, 'Page.navigate', { url: state.url });
     if (r && r.errorText) setError(inst, r.errorText);
     inst.dirty = true;
@@ -211,13 +209,14 @@ chrome.debugger.onEvent.addListener((src, method, params) => {
     if (params.frame.unreachableUrl) { inst.url = params.frame.unreachableUrl; if (inst.status !== 'error') setError(inst, 'Chrome could not load ' + params.frame.unreachableUrl, 'NAVIGATION_FAILED'); return; }
     if (url === 'about:blank' || !isWebUrl(url)) { if (!isWebUrl(url) && url !== 'about:blank' && inst.status !== 'error') setError(inst, 'Chrome could not load ' + (inst.url || state.url), 'NAVIGATION_FAILED'); return; }
     inst.url = url; inst.status = 'loading'; inst.errorKind = ''; ui.renderPanelState(inst); mark(inst);
+    if (inst.throttled) { inst.throttled = false; refreshCast(inst); }
     if (isActive) onActiveNavigated(url);
   } else if (method === 'Page.loadEventFired') {
     if (inst.status !== 'error') { inst.status = 'ready'; ui.renderPanelState(inst); }
     mark(inst); setTimeout(() => mark(inst), 400);
   } else if (method === 'Page.screencastFrame') {
     send(src.tabId, 'Page.screencastFrameAck', { sessionId: params.sessionId }).catch(() => {});
-    inst.dirty = true; inst.painted = Date.now(); inst.nextAt = Math.min(inst.nextAt || 0, Date.now() + (isActive ? ACTIVE_MIN : OTHER_MIN) / 2);   // pixels moved: cut the backoff
+    onCastFrame(inst, params);
   } else if (method === 'Runtime.bindingCalled' && params.name === '__vwReport') {
     let data; try { data = JSON.parse(params.payload); } catch { return; }
     mark(inst); inst.pageChanged = true;
@@ -329,6 +328,44 @@ function wake(inst) {
   send(inst.tabId, 'Page.setWebLifecycleState', { state: 'active' }).catch(() => {});
 }
 function activateControllerTab() {}   // kept for call sites; nothing to activate any more
+
+// ---------- live frames: Page.startScreencast ----------
+// Every device streams its viewport as JPEG frames at the resolution it is displayed at. Chrome only sends a frame
+// when the compositor produced one, so a still page costs nothing and a scrolling one arrives at up to 60 fps
+// (everyNthFrame thins the inactive devices). Page.captureScreenshot is now only a fallback: first paint, a page
+// that changed without repainting).
+// Full rate for the device being scrolled, 20 / 15 fps for the rest: a 60 fps stream of an animating page costs about a
+// core per device in JPEG encoding, and on a panel-sized follower the difference is invisible.
+// An inactive device whose page animates continuously drops to 10 fps until it is touched or navigates again.
+const castNth = inst => inst.instanceId === state.activeId ? 1 : inst.throttled ? 6 : state.devices.length <= 4 ? 3 : 4;
+async function startCast(inst) {
+  if (inst.tabId == null || !inst.attached || state.frozen || inst.paused) return;
+  const [w, h] = dims(inst); const scale = capScaleFor(inst); const nth = castNth(inst);
+  inst.cast = { scale, nth, w, h };
+  await send(inst.tabId, 'Page.startScreencast', { format: 'jpeg', quality: 72, maxWidth: Math.ceil(w * scale), maxHeight: Math.ceil(h * scale), everyNthFrame: nth }).catch(() => {});
+}
+async function stopCast(inst) { inst.cast = null; if (inst.tabId != null) await send(inst.tabId, 'Page.stopScreencast').catch(() => {}); }
+// Restart when the display size, the tab's role or the device orientation changed.
+export async function refreshCast(inst) {
+  if (inst.tabId == null || !inst.attached || inst.casting) return;
+  const want = !state.frozen && !inst.paused;
+  if (!want) { if (inst.cast) await stopCast(inst); return; }
+  const [w, h] = dims(inst); const c = inst.cast;
+  if (inst.instanceId === state.activeId) inst.throttled = false;
+  if (c && c.w === w && c.h === h && c.nth === castNth(inst) && Math.abs(capScaleFor(inst) - c.scale) <= 0.12) return;
+  inst.casting = true;
+  try { await stopCast(inst); await startCast(inst); } finally { inst.casting = false; }
+}
+export function refreshCasts() { for (const d of state.devices) refreshCast(d); }
+function onCastFrame(inst, params) {
+  inst.painted = Date.now(); inst.castFrames = (inst.castFrames || 0) + 1; inst.fpsWin = (inst.fpsWin || 0) + 1;
+  if (state.frozen || inst.paused || inst.status === 'error') return;
+  const had = !!inst.frame;
+  inst.dirty = false; inst.lastData = params.data; inst.capScale = inst.cast ? inst.cast.scale : capScaleFor(inst);
+  inst.frame = 'data:image/jpeg;base64,' + params.data;
+  ui.frameUpdated(inst);
+  if (!had && inst.status === 'loading') { inst.status = 'ready'; ui.renderPanelState(inst); }
+}
 // Frames are captured at the resolution they are displayed at (clip.scale), so a phone shown at 40% costs a
 // fraction of a full-size capture. Downloads (screenshotDevice) always use the full device resolution.
 const capScaleFor = inst => Math.min(1, Math.max(0.2, +((inst.scale || 1) * (window.devicePixelRatio || 1) * 1.08).toFixed(2)));
@@ -381,19 +418,27 @@ async function capture(inst, force = false) {
     if (!inst.frame) nudge(inst);
   } finally { clearTimeout(watchdog); clearTimeout(reset); if (inst.capturing) { inst.capturing = false; inflight--; } }
 }
+// Fallback loop. The screencast delivers the frames; this only steps in when a device reported a change but no
+// frame followed (first paint, or a tab whose compositor went idle).
 setInterval(() => {
   if (state.frozen) return;                    // Snapshots mode: no periodic captures
   const now = Date.now();
   const due = [];
   for (const d of state.devices) {
     if (d.tabId == null || !d.attached || d.capturing || d.paused || d.status === 'error') continue;
-    if (d.frame && d.capScale && Math.abs(capScaleFor(d) - d.capScale) > 0.12) d.dirty = true;   // zoom changed: refresh at the new resolution
-    if (d.dirty && now - (d.nextAt || 0) > -(d.instanceId === state.activeId ? ACTIVE_MIN : OTHER_MIN) * 0.6) due.push([0, d]);
-    else if (!d.dirty && now >= (d.nextAt || 0)) due.push([d.instanceId === state.activeId ? 1 : 2, d]);
+    if (d.cast && Math.abs(capScaleFor(d) - d.cast.scale) > 0.12) refreshCast(d);   // zoom changed: stream at the new resolution
+    if (now - (d.fpsAt || 0) >= 1000) {   // once a second: an inactive device streaming continuously is an animation, thin it
+      const busy = d.fpsWin > 12 && d.instanceId !== state.activeId; d.fpsWin = 0; d.fpsAt = now; d.busyFor = busy ? (d.busyFor || 0) + 1 : 0;
+      if (d.busyFor >= 3 && !d.throttled) { d.throttled = true; refreshCast(d); }
+    }
+    const quiet = now - (d.painted || 0);
+    if (!d.frame && !d.capturing) due.push([0, d]);
+    else if (d.dirty && quiet > 700 && now >= (d.nextAt || 0)) due.push([1, d]);
   }
   due.sort((a, b) => a[0] - b[0]);
   for (const [, d] of due) { if (inflight >= MAX_INFLIGHT) break; capture(d, true); }
 }, 100);
+export function setFrozen(on) { state.frozen = !!on; refreshCasts(); if (!on) for (const d of state.devices) mark(d); }
 
 // ---------- device operations ----------
 export async function addDevices(presets) {
@@ -416,10 +461,10 @@ export async function clearDevices() { for (const d of [...state.devices]) await
 export async function rotate(inst) {
   inst.orientation = inst.orientation === 'portrait' ? 'landscape' : 'portrait';
   ui.renderPanelState(inst); ui.relayout(); savePrefs();
-  if (inst.tabId != null) { try { await applyEmulation(inst); inst.dirty = true; } catch (e) { setError(inst, e.message); } }
+  if (inst.tabId != null) { try { await applyEmulation(inst); mark(inst); refreshCast(inst); } catch (e) { setError(inst, e.message); } }
 }
-export function setActive(id) { state.activeId = id; ui.setActive(id); activateControllerTab(); }
-export function togglePause(inst) { inst.paused = !inst.paused; ui.renderPanelState(inst); if (!inst.paused) inst.dirty = true; }
+export function setActive(id) { const prev = state.devices.find(d => d.instanceId === state.activeId); state.activeId = id; ui.setActive(id); if (prev) refreshCast(prev); const cur = state.devices.find(d => d.instanceId === id); if (cur) refreshCast(cur); }
+export function togglePause(inst) { inst.paused = !inst.paused; ui.renderPanelState(inst); refreshCast(inst); if (!inst.paused) mark(inst); }
 export function retry(inst) { destroyTarget(inst).then(() => createTarget(inst)).then(activateControllerTab); }
 export async function reloadOne(inst, hard = false) {
   if (inst.render === 'iframe') { inst.status = 'loading'; ui.renderPanelState(inst); if (inst.frameId != null) evalIn(inst, '', () => location.reload()).catch(() => ui.setFrameUrl(inst, inst.url || state.url, true)); else ui.setFrameUrl(inst, inst.url || state.url, true); return; }
@@ -431,7 +476,7 @@ export function setViewport(inst, w, h, dpr) {
   if (w) { if (inst.orientation === 'portrait') inst.baseW = w; else inst.baseH = w; }
   if (h) { if (inst.orientation === 'portrait') inst.baseH = h; else inst.baseW = h; }
   if (dpr) inst.dpr = dpr;
-  if (inst.tabId != null) applyEmulation(inst).then(() => { inst.dirty = true; }).catch(() => {});
+  if (inst.tabId != null) applyEmulation(inst).then(() => { mark(inst); refreshCast(inst); }).catch(() => {});
 }
 export async function navigateAll(url) {
   url = normalizeUrl(url); if (!url) return;
