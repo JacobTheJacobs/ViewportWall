@@ -19,6 +19,21 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   return false;
 });
 
+// Toolbar icon: open the wall for the current page (reusing an open wall tab), no popup.
+chrome.action.onClicked.addListener(async tab => {
+  const url = tab && /^(https?|file):\/\//i.test(tab.url || '') ? tab.url : '';
+  const wallUrl = chrome.runtime.getURL('wall.html');
+  const open = (await chrome.tabs.query({ url: wallUrl + '*' }))[0];
+  if (open) {
+    await chrome.tabs.update(open.id, { active: true });
+    await chrome.windows.update(open.windowId, { focused: true });
+    if (url) chrome.tabs.sendMessage(open.id, { type: 'navigate', url }).catch(() => {});
+    return;
+  }
+  const params = new URLSearchParams(); if (url) params.set('url', url);
+  chrome.tabs.create({ url: wallUrl + '?' + params.toString() });
+});
+
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   const { walls = {} } = await chrome.storage.session.get('walls');
   const windowId = walls[tabId];

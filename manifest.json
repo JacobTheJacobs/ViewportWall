@@ -1,14 +1,25 @@
 {
   "manifest_version": 3,
   "name": "Viewport Wall",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "See your website on every screen at once. Multi-device responsive testing wall with synchronized navigation and scroll.",
   "minimum_chrome_version": "116",
-  "permissions": ["debugger", "tabs", "storage", "activeTab"],
+  "permissions": [
+    "debugger",
+    "tabs",
+    "storage",
+    "activeTab"
+  ],
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Open in Viewport Wall"
+    "default_title": "Open Viewport Wall"
   },
-  "background": { "service_worker": "background.js", "type": "module" },
-  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
 }

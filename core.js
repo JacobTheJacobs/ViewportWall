@@ -235,7 +235,7 @@ chrome.debugger.onEvent.addListener((src, method, params) => {
     inst.dirty = true; setTimeout(() => { inst.dirty = true; }, 400);
   } else if (method === 'Runtime.bindingCalled' && params.name === '__vwReport') {
     let data; try { data = JSON.parse(params.payload); } catch { return; }
-    inst.dirty = true;
+    inst.dirty = true; inst.pageChanged = true;
     if (data.type === 'check') { inst.issues = data.issues || []; ui.renderPanelState(inst); ui.renderIssues(); return; }
     if (!isActive) return;
     if (data.type === 'scroll' && state.sync.scroll) syncScroll(inst, data.ratio);
@@ -287,11 +287,18 @@ function nudge(inst) {
   if (inst.tabId == null || inst.frame || nudging === inst || nudgeQ.includes(inst)) return;
   nudgeQ.push(inst); pumpNudge();
 }
+function wake(inst) {
+  if (inst.tabId == null || inst.instanceId === state.activeId || nudging === inst || nudgeQ.includes(inst) || inst.wokeAt && Date.now() - inst.wokeAt < 8000) return;
+  inst.wokeAt = Date.now(); inst.wake = true; nudgeQ.push(inst); pumpNudge();
+}
 async function pumpNudge() {
   if (nudging || !nudgeQ.length) return;
   nudging = nudgeQ.shift();
   try {
-    if (nudging.tabId != null && !nudging.frame) {
+    if (nudging.wake) {
+      nudging.wake = false;
+      if (nudging.tabId != null) { await chrome.tabs.update(nudging.tabId, { active: true }); await sleep(450); nudging.lastData = null; nudging.dirty = true; }
+    } else if (nudging.tabId != null && !nudging.frame) {
       await chrome.tabs.update(nudging.tabId, { active: true });
       const t0 = Date.now();
       // A screenshot requested while the tab was hidden can hang even after it is shown, so ask again now that it is visible.
@@ -341,6 +348,9 @@ async function capture(inst, force = false) {
     const active = inst.instanceId === state.activeId;
     const [mn, mx] = active ? [ACTIVE_MIN, ACTIVE_MAX] : [OTHER_MIN, OTHER_MAX];
     inst.stillFor = changed ? 0 : (inst.stillFor || 0) + 1;
+    // DOM reported changes but pixels never move: the tab is not painting. Wake it by activating it briefly.
+    if (changed) inst.stale = 0; else if (inst.pageChanged) { inst.stale = (inst.stale || 0) + 1; if (inst.stale >= 3) { inst.stale = 0; wake(inst); } }
+    inst.pageChanged = false;
     inst.nextAt = Date.now() + Math.min(mx, mn * Math.pow(2, inst.stillFor));
     if (!changed) return;                      // unchanged pixels: keep the current image, no flicker
     inst.lastData = r.data; inst.frame = 'data:image/jpeg;base64,' + r.data;

@@ -5,7 +5,7 @@ Chrome extension: see one website on many viewports at once, with synchronized n
 ## Install (unpacked)
 
 1. `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select this folder.
-2. Open any page (or `localhost:3000`), click the toolbar icon, pick a set or **Choose devices**.
+2. Open any page (or `localhost:3000`) and click the toolbar icon. The wall opens with that URL; clicking the icon again reuses the open wall and sends it the new page.
 
 ## How it works
 
@@ -48,9 +48,8 @@ Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, i
 ```
 manifest.json   MV3 manifest (debugger, tabs, storage, activeTab)
 background.js   opens the wall; closes the helper window when the wall tab closes
-popup.*         launcher: current URL + quick sets
 core.js         target manager, CDP emulation, capture loop, sync, screenshots, sessions (no DOM)
-wall.js         UI: toolbar, sidebar, canvas layout, picker, popovers, focus/presentation
+wall.js         UI: toolbars, menus, canvas layout, picker, focus/compare/presentation
 wall.html/css   structure + design tokens (dark/light)
 frames.js       data-driven device shells, status bars, browser bars, cutouts
 icons.js        inline SVG icon set

@@ -510,6 +510,7 @@ Object.assign(ui, {
   renderRecent: list => { $('#recent').innerHTML = (list || []).map(u => `<option value="${esc(u)}">`).join(''); },
   setActive: setActiveUI,
 });
+chrome.runtime.onMessage.addListener(msg => { if (msg && msg.type === 'navigate' && msg.url && msg.url !== state.url) { C.navigateAll(msg.url); toast('Opened ' + hostOf(msg.url)); } });
 async function boot() {
   const prefs = await C.loadPrefs();
   const q = new URLSearchParams(location.search);
