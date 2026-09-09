@@ -41,6 +41,9 @@ button{cursor:pointer}
 .btn.block{width:100%;justify-content:center}
 .btn.danger,.menu button.danger{color:var(--danger)}
 .btn:disabled{opacity:.45;cursor:default}
+.btn.sm{height:24px;padding:0 8px;font-size:12px}
+.warn-btn{color:var(--warn);border-color:transparent;background:transparent}
+.warn-btn:hover{background:var(--bg-elevated)}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:var(--r-sm);border:1px solid transparent;background:transparent;color:var(--text-secondary);transition:background var(--t-fast),color var(--t-fast)}
 .icon-btn:hover{background:var(--bg-elevated);color:var(--text-primary)}
 .icon-btn.sm{width:24px;height:24px}
@@ -87,7 +90,7 @@ body.sb-collapsed #sidebar{width:0;border-right-color:transparent}
 
 #canvas{flex:1;position:relative;min-width:0;overflow:auto;background:var(--bg-canvas);background-image:radial-gradient(var(--canvas-grid) 1px,transparent 1px);background-size:22px 22px;outline:none}
 #canvas.panning{cursor:grab}
-#wall{display:flex;flex-wrap:wrap;gap:40px 36px;align-content:flex-start;align-items:flex-start;justify-content:center;padding:32px 40px 48px;min-height:100%}
+#wall{display:flex;flex-wrap:wrap;gap:40px 36px;align-content:flex-start;align-items:flex-start;justify-content:center;padding:20px 32px 24px;min-height:100%}
 #wall.horizontal{flex-wrap:nowrap;justify-content:flex-start}
 #wall.free{display:block;position:relative;min-width:100%}
 #wall.free .panel{position:absolute}
@@ -209,7 +212,7 @@ body.sb-collapsed #sidebar{width:0;border-right-color:transparent}
 .st-left,.st-right,.st-center{display:flex;align-items:center;gap:var(--sp-2)}
 .sep{width:1px;height:16px;background:var(--border-subtle)}
 .zoom{display:flex;align-items:center;gap:2px}
-.zoom-val{min-width:48px;height:24px;border:1px solid var(--border-subtle);border-radius:5px;background:var(--bg-input);color:var(--text-primary);font-variant-numeric:tabular-nums}
+.zoom-val{min-width:48px;padding:0 8px;height:24px;border:1px solid var(--border-subtle);border-radius:5px;background:var(--bg-input);color:var(--text-primary);font-variant-numeric:tabular-nums}
 .perf{display:flex;align-items:center;gap:6px}
 .perf i{width:7px;height:7px;border-radius:50%;background:var(--success)}
 .perf.warn i{background:var(--warn)}
@@ -308,5 +311,5 @@ body.present .present-title{display:block!important;text-align:center;padding:36
 body.present .label .name{font-size:14px}
 
 /* ============ Responsive ============ */
-@media (max-width:1400px){.brand-name{display:none}.tb-center{max-width:520px}.statusbar .st-center .seg[data-key=browser]{display:none}}
-@media (max-width:1100px){.btn .lbl{display:none}.statusbar .st-center .seg[data-key=type]{display:none}}
+@media (max-width:1400px){.brand-name{display:none}.tb-center{max-width:520px}}
+@media (max-width:1100px){.btn .lbl{display:none}.seg button{padding:3px 7px}}

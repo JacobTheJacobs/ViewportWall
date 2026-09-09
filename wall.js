@@ -9,7 +9,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const wallEl = $('#wall'), canvasEl = $('#canvas');
 const panels = new Map();
-const LABEL_H = 56, GAP_X = 36, GAP_Y = 40, PAD = 40;
+const LABEL_H = 56, GAP_X = 36, GAP_Y = 40, PAD = 28;
 let focusId = null;
 let compareSel = new Set();
 
@@ -56,6 +56,7 @@ function mount(d) {
     else if (a === 'menu') openDevMenu(d, b);
     else if (a === 'retry') C.retry(d);
   });
+  el.querySelector('.issue-badge').addEventListener('click', e => { e.stopPropagation(); $('#issues').dataset.open = '1'; renderIssues(); });
   el.addEventListener('dblclick', e => { if (e.target.closest('.viewport')) focusDevice(focusId === d.instanceId ? null : d.instanceId); });
   C.wireInput(d, el.querySelector('.viewport'));
   wireDrag(d, el); wireResize(d, el); visObs.observe(el);
@@ -94,8 +95,9 @@ function renderPanelState(d) {
 const hostOf = u => { try { return new URL(u).host; } catch { return u || ''; } };
 function frameUpdated(d) {
   const img = panels.get(d.instanceId)?.querySelector('img'); if (!img) return;
-  const next = new Image(); next.src = d.frame;
-  (next.decode ? next.decode().catch(() => {}) : Promise.resolve()).then(() => { if (img.isConnected) img.src = next.src; }); if (focusId === d.instanceId || state.layout.type === 'focus') { const t = $(`#thumbs [data-id="${d.instanceId}"] img`); if (t) t.src = d.frame; } }
+  img.decoding = 'async'; img.src = d.frame;   // async decoding keeps the previous bitmap until the new one is ready: no flicker
+  if (focusId) { const t = $(`#thumbs [data-id="${d.instanceId}"] img`); if (t) t.src = d.frame; }
+}
 function setActiveUI(id) {
   for (const [iid, el] of panels) el.classList.toggle('active', iid === id);
   for (const d of state.devices) renderPanelState(d);
@@ -109,7 +111,9 @@ function relayout() {
   wallEl.className = focusId ? 'focus' : type;
   const list = state.devices.filter(d => panels.has(d.instanceId));
   for (const d of list) if (!d.outer) buildFrame(d);
-  let base = zoom === 'fit' ? fitScale(list) : Number(zoom);
+  const fitH = zoom === 'fith' && !focusId && type !== 'free';
+  if (!focusId && type === 'auto') wallEl.className = fitH ? 'horizontal' : 'auto';
+  let base = zoom === 'fit' ? fitScale(list) : fitH ? fitHeight(list) : Number(zoom);
   for (const d of list) {
     const el = panels.get(d.instanceId);
     const hidden = focusId && d.instanceId !== focusId; el.style.display = hidden ? 'none' : '';
@@ -123,7 +127,7 @@ function relayout() {
     if (type === 'free' && !focusId) { if (d.fx == null) { d.fx = 40 + (list.indexOf(d) % 4) * 320; d.fy = 40 + Math.floor(list.indexOf(d) / 4) * 700; } el.style.left = d.fx + 'px'; el.style.top = d.fy + 'px'; } else { el.style.left = el.style.top = ''; }
     el.querySelector('.meta').textContent = `${dims(d)[0]} × ${dims(d)[1]} · ${d.dpr}x · ${Math.round(s * 100)}%`;
   }
-  $('#zoomBtn').textContent = zoom === 'fit' ? `Fit ${Math.round(base * 100)}%` : Math.round(base * 100) + '%';
+  $('#zoomBtn').textContent = zoom === 'fit' ? `Fit all ${Math.round(base * 100)}%` : zoom === 'fith' ? `Fit height ${Math.round(base * 100)}%` : Math.round(base * 100) + '%';
   renderThumbs();
 }
 function fitScale(list) {
@@ -140,6 +144,11 @@ function fitScale(list) {
     best = Math.max(best, Math.min(sW, sH));
   }
   return clamp(best);
+}
+function fitHeight(list) {
+  if (!list.length) return 1;
+  const H = canvasEl.clientHeight - 20 - 24 - 12 - LABEL_H;   // top pad, bottom pad, scrollbar
+  return clamp(H / Math.max(...list.map(d => d.outer[1])));
 }
 function fitOne(d) { const W = canvasEl.clientWidth - PAD * 2, H = canvasEl.clientHeight - PAD * 2 - 150; return clamp(Math.min(W / d.outer[0], (H - LABEL_H) / d.outer[1])); }
 const clamp = s => Math.max(0.08, Math.min(1, s));
@@ -199,7 +208,7 @@ canvasEl.addEventListener('wheel', e => {
 }, { passive: false });
 const ZOOMS = [0.25, 0.33, 0.5, 0.75, 1];
 function stepZoom(dir) {
-  const cur = state.layout.zoom === 'fit' ? fitScale(state.devices) : Number(state.layout.zoom);
+  const cur = state.layout.zoom === 'fit' ? fitScale(state.devices) : state.layout.zoom === 'fith' ? fitHeight(state.devices) : Number(state.layout.zoom);
   const next = dir > 0 ? ZOOMS.find(z => z > cur + 0.01) : [...ZOOMS].reverse().find(z => z < cur - 0.01);
   if (next == null) return;
   state.layout.zoom = String(next); relayout(); C.savePrefs();
@@ -354,12 +363,13 @@ function syncUIFromState() {
 function renderIssues() {
   const box = $('#issues'); const rows = [];
   for (const d of state.devices) for (const i of (d.issues || [])) rows.push(`<div class="i"><b>${esc(d.name)}</b> — ${esc(i.msg)}</div>`);
-  box.hidden = !rows.length || box.dataset.closed === '1';
+  const btn = $('#issuesBtn'); btn.hidden = !rows.length; btn.innerHTML = icon('warn', 13) + ` ${rows.length} issue${rows.length === 1 ? '' : 's'}`;
+  box.hidden = !rows.length || box.dataset.open !== '1';
   box.innerHTML = `<div class="ihead">${icon('warn', 14)} ${rows.length} responsive issue${rows.length === 1 ? '' : 's'}<button class="link" data-act="report">Copy report</button><button class="icon-btn sm" data-act="close">${icon('x', 12)}</button></div>` + rows.join('');
 }
 $('#issues').addEventListener('click', async e => {
   const a = e.target.closest('[data-act]')?.dataset.act;
-  if (a === 'close') { $('#issues').dataset.closed = '1'; $('#issues').hidden = true; }
+  if (a === 'close') { $('#issues').dataset.open = '0'; $('#issues').hidden = true; }
   if (a === 'report') { try { await navigator.clipboard.writeText(C.buildReport()); toast('Report copied'); } catch { toast('Copy failed'); } }
 });
 
@@ -462,6 +472,7 @@ $('#customForm').addEventListener('submit', e => {
 // ---------- toolbar ----------
 $('#urlform').addEventListener('submit', e => { e.preventDefault(); C.navigateAll($('#url').value); $('#url').blur(); });
 $('#back').onclick = () => C.navHistory(-1); $('#fwd').onclick = () => C.navHistory(1); $('#reload').onclick = e => C.reloadAll(e.shiftKey);
+$('#issuesBtn').addEventListener('click', () => { const b = $('#issues'); b.dataset.open = b.dataset.open === '1' ? '0' : '1'; renderIssues(); });
 $('#empty').addEventListener('click', e => { if (e.target.dataset.act === 'pick') openPicker(); if (e.target.dataset.set) C.applySet(e.target.dataset.set).then(renderSets); });
 $('#onboard').addEventListener('click', e => { if (e.target.dataset.act === 'ok') { $('#onboard').hidden = true; C.persist({ onboarded: true }); } });
 
@@ -483,7 +494,7 @@ document.addEventListener('keydown', e => {
   else if (k === 's' || k === 'S') { state.sync.scroll = !state.sync.scroll; C.savePrefs(); syncSync(); toast(`Scroll sync ${state.sync.scroll ? 'on' : 'off'}`); }
   else if (k === 'n' || k === 'N') { state.sync.navigation = !state.sync.navigation; C.savePrefs(); syncSync(); toast(`Navigation sync ${state.sync.navigation ? 'on' : 'off'}`); }
   else if (k === 'f' || k === 'F') togglePresent();
-  else if (k === '0') { state.layout.zoom = 'fit'; relayout(); C.savePrefs(); }
+  else if (k === '0') { state.layout.zoom = state.layout.zoom === 'fith' ? 'fit' : 'fith'; relayout(); C.savePrefs(); }
   else if (/^[1-9]$/.test(k)) { const d = state.devices[+k - 1]; if (d) C.setActive(d.instanceId); }
   else if (k === '+' || k === '=') stepZoom(1); else if (k === '-') stepZoom(-1);
 });

@@ -2,12 +2,13 @@
 // UI code registers hooks in `ui`; the core never touches DOM structure directly except through them.
 import { DEVICES, SETS, UA } from './devices.js';
 
+window.__vwState = globalThis.__vwState || null;
 export const state = {
   url: '',
   devices: [],
   activeId: null,
   sync: { navigation: true, scroll: true, clicks: false, input: false, reload: true },
-  layout: { type: 'auto', zoom: 'fit', frames: 'realistic', browser: 'auto', theme: 'dark', sidebar: true, mobileUA: false },
+  layout: { type: 'auto', zoom: 'fith', frames: 'realistic', browser: 'auto', theme: 'dark', sidebar: true, mobileUA: false },
   windowId: null,
   autoReload: 0,
 };
@@ -16,6 +17,7 @@ export let savedSets = [];
 export let sessions = [];
 export let favorites = new Set();
 let uid = 0;
+window.__vwState = state;
 
 // Hooks the UI layer fills in.
 export const ui = {
@@ -51,7 +53,7 @@ const INJECT = `(function(){
       const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
       if (r.right > innerWidth + 1 || r.left < -1) { issues.push({ kind: 'fixed', msg: 'Fixed element exceeds viewport: ' + label(el) }); n++; }
     }
-    const cands = [...document.querySelectorAll('nav,header,button,a,h1,h2,img,[role=button],input')].filter(e => { const cs = getComputedStyle(e); return cs.visibility !== 'hidden' && cs.opacity !== '0' && e.getClientRects().length; }).slice(0, 80);
+    const cands = [...document.querySelectorAll('nav,header,button,a,h1,h2,img,[role=button],input')].filter(e => { const cs = getComputedStyle(e); const r = e.getBoundingClientRect(); return cs.visibility !== 'hidden' && cs.opacity !== '0' && r.width > 8 && r.height > 8 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight && cs.clip === 'auto' && cs.clipPath === 'none'; }).slice(0, 80);
     const rects = cands.map(e => [e, e.getBoundingClientRect()]);
     let found = 0;
     for (let i = 0; i < rects.length && found < 3; i++) for (let j = i + 1; j < rects.length && found < 3; j++) {
@@ -85,10 +87,11 @@ export async function loadPrefs() {
   if (p.prefs) { Object.assign(state.sync, p.prefs.sync || {}); Object.assign(state.layout, p.prefs.layout || {}); }
   if (!['auto', 'horizontal', 'grid', 'free', 'focus'].includes(state.layout.type)) state.layout.type = 'auto';
   if (typeof state.layout.frames === 'boolean' || !p.prefs?.uiVersion) { state.layout.frames = 'realistic'; state.layout.browser = 'auto'; }
+  if ((p.prefs?.uiVersion || 0) < 3) { state.layout.zoom = 'fith'; state.layout.type = 'auto'; }
   return p;
 }
 export function savePrefs() {
-  chrome.storage.local.set({ prefs: { sync: state.sync, layout: state.layout, uiVersion: 2 }, lastDevices: state.devices.map(instToPreset) });
+  chrome.storage.local.set({ prefs: { sync: state.sync, layout: state.layout, uiVersion: 3 }, lastDevices: state.devices.map(instToPreset) });
 }
 export const persist = obj => chrome.storage.local.set(obj);
 export const allPresets = () => [...DEVICES, ...customDevices];
@@ -118,10 +121,13 @@ export const dims = i => i.orientation === 'portrait' ? [i.baseW, i.baseH] : [i.
 
 async function ensureWindow() {
   if (state.windowId != null) { try { await chrome.windows.get(state.windowId); return; } catch {} }
-  const win = await chrome.windows.create({ url: 'about:blank', focused: false, width: 520, height: 640, top: 40, left: 40 });
+  // Small, unfocused helper window parked in the bottom-right corner; focus goes straight back to the wall.
+  const w = 420, h = 320;
+  const win = await chrome.windows.create({ url: 'about:blank', focused: false, width: w, height: h, left: Math.max(0, screen.availWidth - w - 8), top: Math.max(0, screen.availHeight - h - 8) });
   state.windowId = win.id;
   state.spareTabId = win.tabs && win.tabs[0] ? win.tabs[0].id : null;
   chrome.runtime.sendMessage({ type: 'register-window', windowId: win.id });
+  try { const me = await chrome.windows.getCurrent(); await chrome.windows.update(me.id, { focused: true }); } catch {}
 }
 
 const NET = {
@@ -183,7 +189,7 @@ export async function createTarget(inst) {
     await applyEmulation(inst); await applyProfiles(inst);
     const r = await send(tabId, 'Page.navigate', { url: state.url });
     if (r && r.errorText) setError(inst, r.errorText);
-    inst.dirty = true;
+    inst.dirty = true; chrome.tabs.update(tabId, { active: true }).catch(() => {});
   } catch (e) { setError(inst, e && e.message ? e.message : String(e)); }
 }
 export async function destroyTarget(inst) {
@@ -252,19 +258,38 @@ function syncScroll(from, ratio) {
 }
 
 // ---------- capture loop ----------
+// Background tabs in an occluded window can stall their first paint. Activating the tab inside the helper window
+// forces a frame; it is invisible to the user because the helper window is never focused.
+function nudge(inst) {
+  if (inst.tabId == null || inst.nudgedAt && Date.now() - inst.nudgedAt < 3000) return;
+  inst.nudgedAt = Date.now();
+  chrome.tabs.update(inst.tabId, { active: true }).catch(() => {});
+  setTimeout(activateControllerTab, 900);
+}
+// The helper window's active tab must be the wall's active device: input events are only reliable on the active tab.
+let actT = null;
+function activateControllerTab() {
+  clearTimeout(actT);
+  actT = setTimeout(() => { const a = state.devices.find(d => d.instanceId === state.activeId); if (a && a.tabId != null) chrome.tabs.update(a.tabId, { active: true }).catch(() => {}); }, 50);
+}
 async function capture(inst, force = false) {
-  if (inst.tabId == null || inst.capturing || inst.paused || inst.offscreen || inst.status === 'error') return;
+  if (inst.tabId == null || inst.capturing || inst.paused || (inst.offscreen && inst.frame) || inst.status === 'error') return;
   if (!force && !inst.dirty) return;
   inst.capturing = true; inst.dirty = false;
+  const started = Date.now();
+  const watchdog = setTimeout(() => { if (inst.capturing && Date.now() - started > 1400) nudge(inst); }, 1500);
   try {
     const [w, h] = dims(inst);
-    const r = await send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 65, optimizeForSpeed: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } });
+    const r = await Promise.race([
+      send(inst.tabId, 'Page.captureScreenshot', { format: 'jpeg', quality: 65, optimizeForSpeed: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('capture timeout')), 6000)),
+    ]);
     if (r.data === inst.lastData) return;          // unchanged pixels: keep the current image, no flicker
     inst.lastData = r.data; inst.frame = 'data:image/jpeg;base64,' + r.data;
     ui.frameUpdated(inst);
     if (inst.status === 'loading') { inst.status = 'ready'; ui.renderPanelState(inst); }
-  } catch { inst.dirty = true; }
-  finally { inst.capturing = false; }
+  } catch (e) { inst.dirty = true; inst.lastCaptureError = String(e && e.message || e); inst.captureFails = (inst.captureFails || 0) + 1; if (!inst.frame) nudge(inst); }
+  finally { clearTimeout(watchdog); inst.capturing = false; }
 }
 let tick = 0;
 setInterval(() => {
@@ -282,6 +307,7 @@ export async function addDevices(presets) {
   if (!state.activeId && state.devices.length) setActive(state.devices[0].instanceId);
   ui.countChanged(); ui.relayout(); savePrefs();
   for (const inst of added) await createTarget(inst);
+  activateControllerTab();
   return added;
 }
 export async function removeDevice(inst) {
@@ -297,9 +323,9 @@ export async function rotate(inst) {
   ui.renderPanelState(inst); ui.relayout(); savePrefs();
   if (inst.tabId != null) { try { await applyEmulation(inst); inst.dirty = true; } catch (e) { setError(inst, e.message); } }
 }
-export function setActive(id) { state.activeId = id; ui.setActive(id); }
+export function setActive(id) { state.activeId = id; ui.setActive(id); activateControllerTab(); }
 export function togglePause(inst) { inst.paused = !inst.paused; ui.renderPanelState(inst); if (!inst.paused) inst.dirty = true; }
-export function retry(inst) { destroyTarget(inst).then(() => createTarget(inst)); }
+export function retry(inst) { destroyTarget(inst).then(() => createTarget(inst)).then(activateControllerTab); }
 export async function reloadOne(inst, hard = false) {
   if (inst.tabId == null) return retry(inst);
   inst.status = 'loading'; inst.errorKind = ''; ui.renderPanelState(inst);
