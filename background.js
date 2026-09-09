@@ -1,14 +1,7 @@
 // Service worker: opens the wall, closes the device tab group when a wall tab closes.
 
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
-  if (msg.type === 'open-wall') {
-    const params = new URLSearchParams();
-    if (msg.url) params.set('url', msg.url);
-    if (msg.set) params.set('set', msg.set);
-    if (msg.pick) params.set('pick', '1');
-    chrome.tabs.create({ url: chrome.runtime.getURL('wall.html?' + params.toString()) });
-    respond({ ok: true });
-  }
+  if (msg.type === 'open-wall') { openWall(msg.url || ''); respond({ ok: true }); }
   if (msg.type === 'register-group' && sender.tab) {
     chrome.storage.session.get('walls').then(({ walls = {} }) => {
       walls[sender.tab.id] = msg.groupId;
@@ -20,8 +13,7 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
 });
 
 // Toolbar icon: open the wall for the current page (reusing an open wall tab), no popup.
-chrome.action.onClicked.addListener(async tab => {
-  const url = tab && /^(https?|file):\/\//i.test(tab.url || '') ? tab.url : '';
+async function openWall(url) {
   const wallUrl = chrome.runtime.getURL('wall.html');
   const open = (await chrome.tabs.query({ url: wallUrl + '*' }))[0];
   if (open) {
@@ -32,7 +24,8 @@ chrome.action.onClicked.addListener(async tab => {
   }
   const params = new URLSearchParams(); if (url) params.set('url', url);
   chrome.tabs.create({ url: wallUrl + '?' + params.toString() });
-});
+}
+chrome.action.onClicked.addListener(tab => openWall(tab && /^(https?|file):\/\//i.test(tab.url || '') ? tab.url : ''));
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   const { walls = {} } = await chrome.storage.session.get('walls');
