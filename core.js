@@ -37,7 +37,7 @@ const INJECT = `(function(){
   const check = () => {
     const de = document.documentElement; const issues = [];
     if (de.scrollWidth > de.clientWidth) issues.push({ kind: 'overflow', msg: 'Horizontal overflow: ' + de.scrollWidth + 'px content in ' + de.clientWidth + 'px viewport' });
-    const label = el => (el.id ? '#' + el.id : el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/)[0] : '')) + (el.textContent ? ' "' + el.textContent.trim().slice(0, 30) + '"' : '');
+    const label = el => { const t = (el.innerText || el.getAttribute('aria-label') || el.alt || '').trim().replace(/\s+/g, ' ').slice(0, 28); const id = el.id && el.id.length < 24 && !/\d{4,}/.test(el.id) ? '#' + el.id : ''; return (id || el.tagName.toLowerCase()) + (t ? ' "' + t + (t.length === 28 ? '…' : '') + '"' : ''); };
     let n = 0;
     for (const el of document.querySelectorAll('button,a,h1,h2,h3,label,[role=button],input[type=submit]')) {
       if (n > 5) break;
@@ -84,11 +84,11 @@ export async function loadPrefs() {
   savedSets = p.savedSets || [];
   if (p.prefs) { Object.assign(state.sync, p.prefs.sync || {}); Object.assign(state.layout, p.prefs.layout || {}); }
   if (!['auto', 'horizontal', 'grid', 'free', 'focus'].includes(state.layout.type)) state.layout.type = 'auto';
-  if (typeof state.layout.frames === 'boolean') state.layout.frames = state.layout.frames ? 'realistic' : 'none';
+  if (typeof state.layout.frames === 'boolean' || !p.prefs?.uiVersion) { state.layout.frames = 'realistic'; state.layout.browser = 'auto'; }
   return p;
 }
 export function savePrefs() {
-  chrome.storage.local.set({ prefs: { sync: state.sync, layout: state.layout }, lastDevices: state.devices.map(instToPreset) });
+  chrome.storage.local.set({ prefs: { sync: state.sync, layout: state.layout, uiVersion: 2 }, lastDevices: state.devices.map(instToPreset) });
 }
 export const persist = obj => chrome.storage.local.set(obj);
 export const allPresets = () => [...DEVICES, ...customDevices];
