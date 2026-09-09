@@ -22,7 +22,6 @@ setIcon('#captureBtn', 'camera', 17, 'Screenshot'); setIcon('#recordBtn', 'recor
 setIcon('#setsBtn', 'layers', 14, 'Sets'); setIcon('#saveSetBtn', 'save', 14, 'Save set'); setIcon('#bpBtn', 'ruler', 14, 'Breakpoints'); setIcon('#saveSessionBtn', 'clock', 14, 'Save session'); setIcon('#clearBtn', 'trash', 14, 'Clear all');
 $('.url-lock').innerHTML = icon('lock', 14); $('.url-globe').innerHTML = icon('globe', 15); $('.pal-ic').innerHTML = icon('search', 18); $('#picker [data-act=close]').innerHTML = icon('x');
 const MODE_ICON = { live: 'live', snapshots: 'snapshots', focus: 'focus', compare: 'compare' }, MODE_LABEL = { live: 'Live', snapshots: 'Snapshots', focus: 'Focus', compare: 'Compare' };
-$$('#modes button').forEach(b => { b.innerHTML = icon(MODE_ICON[b.dataset.mode], 16) + MODE_LABEL[b.dataset.mode]; });
 $$('#capturePop button, #settingsPop button, #devMenu button, #viewPop [data-view]').forEach(b => {
   const map = { active: 'phone', all: 'layers', wall: 'grid', full: 'file', present: 'present', rotateAll: 'rotate', report: 'note', saveSession: 'save', clear: 'trash', about: 'info',
     reload: 'reload', rotate: 'rotate', pause: 'pause', focus: 'focus', shot: 'camera', compare: 'compare', note: 'note', edit: 'pencil', dup: 'copy', remove: 'trash', breakpoints: 'ruler', auto: 'wand', horizontal: 'rows', grid: 'grid', free: 'layout' };
@@ -152,7 +151,7 @@ function rebuildAll() { for (const d of state.devices) { buildFrame(d); renderPa
 
 // ---------- modes ----------
 function setMode(m, id) {
-  mode = m; $$('#modes button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  mode = m;
   state.frozen = $('#freeze').checked;
   if (m === 'focus') { const t = id || state.activeId || state.devices[0]?.instanceId; focusIds = t ? [t] : []; if (t) C.setActive(t); }
   else if (m === 'compare') {
@@ -162,7 +161,6 @@ function setMode(m, id) {
   } else focusIds = [];
   $('#thumbs').hidden = !focusIds.length; relayout();
 }
-$('#modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(mode === b.dataset.mode ? 'live' : b.dataset.mode); });
 $('#freeze').addEventListener('change', e => { state.frozen = e.target.checked; if (state.frozen) { C.captureAllOnce(); toast('Live updates paused'); } else toast('Live updates resumed'); });
 function renderThumbs() {
   const box = $('#thumbs'); if (!focusIds.length) { box.innerHTML = ''; return; }
