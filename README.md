@@ -2,6 +2,8 @@
 
 Chrome extension: see one website on many viewports at once, with synchronized navigation and scroll.
 
+![The wall running react.dev on five phones](docs/wall.png)
+
 ## Install (unpacked)
 
 1. `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select this folder.
@@ -31,6 +33,8 @@ One header bar: brand, pill URL bar with back/forward/reload, View menu (layout,
 Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, iOS status bar, Safari bar, home indicator), iPhone classic (bezels + home button), Pixel / Galaxy (punch-hole, Android status bar, Chrome bar, gesture bar), iPad, desktop browser window, and a minimal rounded frame for raw breakpoints. All bars sit outside the emulated viewport, so CSS media queries always see the exact device width.
 
 ## Features
+
+![Watch, phone, foldable, tablet, laptop, desktop and TV showing MDN at once](docs/store-all-screens.png)
 
 - Wall: auto grid, horizontal, vertical, focus + comparisons; fit or fixed zoom; frames toggle; presentation mode; drag to reorder; double-click to focus one device.
 - Devices: 37 named presets + raw breakpoints, custom devices, favorites, saved sets, duplicate, rotate (one/all), pause, drag the right edge of a panel to resize its width live.
