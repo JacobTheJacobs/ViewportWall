@@ -57,6 +57,31 @@ your browser.
 
 Developer Tools
 
+## Language
+
+English (United States)
+
+## Graphic assets (all in docs/, already the exact sizes the dashboard asks for)
+
+| Field | File |
+| --- | --- |
+| Store icon 128x128 | docs/store-icon-128.png |
+| Screenshot 1280x800 | docs/store-all-screens.png |
+| Screenshot 1280x800 | docs/store-phones.png |
+| Small promo tile 440x280 | docs/promo-440x280.png |
+| Marquee promo tile 1400x560 | docs/promo-1400x560.png |
+
+Screenshots and promo tiles are 24-bit PNG with no alpha channel, as required.
+
+## Homepage and support URL
+
+Leave Official URL as None. Use the gist holding PRIVACY.md, or make the GitHub
+repository public and use it for both Homepage URL and Support URL.
+
+## Mature content
+
+No.
+
 ## Single purpose
 
 Viewport Wall displays a single website simultaneously at multiple emulated
