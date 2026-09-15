@@ -1,0 +1,8 @@
+# Files that belong in the repository but not in the Chrome Web Store package.
+# `git archive` honours export-ignore, so the upload zip carries code and assets only.
+image.png       export-ignore
+README.md       export-ignore
+PRIVACY.md      export-ignore
+STORE-LISTING.md export-ignore
+.gitignore      export-ignore
+.gitattributes  export-ignore
