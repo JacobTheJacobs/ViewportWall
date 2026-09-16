@@ -4,7 +4,11 @@ Chrome extension: see one website on many viewports at once, with synchronized n
 
 ![The wall running react.dev on five phones](docs/wall.png)
 
-## Install (unpacked)
+## Install
+
+**[Add to Chrome from the Chrome Web Store](https://chromewebstore.google.com/detail/viewport-wall/famamjgffefkajiifeigbfgmmbgnkdmn)**
+
+### From source (unpacked)
 
 1. `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select this folder.
 2. Open any page (or `localhost:3000`) and click the toolbar icon. The wall opens with that URL; clicking the icon again reuses the open wall and sends it the new page.
