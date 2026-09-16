@@ -553,15 +553,18 @@ Object.assign(ui, {
   renderRecent: list => { $('#recent').innerHTML = (list || []).map(u => `<option value="${esc(u)}">`).join(''); },
   setActive: setActiveUI,
 });
-chrome.runtime.onMessage.addListener(msg => { if (msg && msg.type === 'navigate' && msg.url && msg.url !== state.url) { C.navigateAll(msg.url); toast('Opened ' + hostOf(msg.url)); } });
+chrome.runtime.onMessage.addListener(msg => { if (msg && msg.type === 'navigate' && msg.url && msg.url !== state.url) { C.navigateAll(msg.url); if (!C.isRestrictedUrl(msg.url)) toast('Opened ' + hostOf(msg.url)); } });
 // Debug/automation hooks (used by the benchmark and test harness).
 window.__vwUi = ui; window.__vwAdd = ids => C.addDevices(ids.map(C.findPreset).filter(Boolean)); window.__vwNav = u => C.navigateAll(u);
 async function boot() {
   const prefs = await C.loadPrefs();
   const q = new URLSearchParams(location.search);
-  const recent = (prefs.recentUrls || []).filter(C.isWebUrl);
+  const recent = (prefs.recentUrls || []).filter(u => C.isWebUrl(u) && !C.isRestrictedUrl(u));
   if (recent.length !== (prefs.recentUrls || []).length) C.persist({ recentUrls: recent });
-  state.url = C.normalizeUrl(q.get('url')) || recent[0] || 'http://localhost:3000';
+  const asked = C.normalizeUrl(q.get('url'));
+  const blocked = asked && C.isRestrictedUrl(asked);   // opened from the Web Store itself: start on something that can load
+  state.url = (blocked ? '' : asked) || recent[0] || 'https://example.com';
+  if (blocked) setTimeout(() => toast(C.RESTRICTED_MSG), 800); else if (asked) C.rememberUrl(asked);   // the page the wall was opened on counts as visited
   ui.renderRecent(recent); renderSessions(); syncUIFromState(); setMode('live');
   if (!prefs.onboarded) $('#onboard').hidden = false;
   if (q.get('render')) state.layout.render = q.get('render');

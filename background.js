@@ -25,7 +25,9 @@ async function openWall(url) {
   const params = new URLSearchParams(); if (url) params.set('url', url);
   chrome.tabs.create({ url: wallUrl + '?' + params.toString() });
 }
-chrome.action.onClicked.addListener(tab => openWall(tab && /^(https?|file):\/\//i.test(tab.url || '') ? tab.url : ''));
+// The Chrome Web Store can never be opened by an extension: clicking the icon there opens the wall on its last page instead.
+const restricted = u => /^https:\/\/(chromewebstore\.google\.com|chrome\.google\.com\/webstore)/i.test(u || '');
+chrome.action.onClicked.addListener(tab => openWall(tab && /^(https?|file):\/\//i.test(tab.url || '') && !restricted(tab.url) ? tab.url : ''));
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   const { walls = {} } = await chrome.storage.session.get('walls');

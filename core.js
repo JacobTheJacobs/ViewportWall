@@ -116,8 +116,12 @@ export async function applyEmulation(inst) {
 }
 
 // Chrome net error → product copy.
+// Pages Chrome refuses to let any extension debug or script. Loading them only ever produces "Not allowed".
+export const isRestrictedUrl = u => { try { const x = new URL(u); return x.hostname === 'chromewebstore.google.com' || (x.hostname === 'chrome.google.com' && x.pathname.startsWith('/webstore')); } catch { return false; } };
+export const RESTRICTED_MSG = 'Chrome does not let any extension open the Chrome Web Store, so it cannot be shown on the wall. Try another site.';
 export function classifyError(text) {
   const t = (text || '').toUpperCase();
+  if (t.includes('NOT ALLOWED')) return { kind: 'restricted', title: 'Chrome blocks this page', msg: 'is protected by Chrome. No extension can open it.' };
   if (t.includes('CONNECTION_REFUSED')) return { kind: 'refused', title: "Couldn't load page", msg: 'refused the connection.' };
   if (t.includes('NAME_NOT_RESOLVED')) return { kind: 'dns', title: "Couldn't find server", msg: 'could not be resolved.' };
   if (t.includes('TIMED_OUT')) return { kind: 'timeout', title: 'Page timed out', msg: 'took too long to respond.' };
@@ -266,7 +270,7 @@ chrome.tabs.onRemoved.addListener(tabId => {
 
 export const isWebUrl = u => /^(https?|file):\/\//i.test(u || '') && !/^https?:\/\/chrome-error/i.test(u);
 function onActiveNavigated(url) {
-  if (!url || url === state.url || !isWebUrl(url)) return;
+  if (!url || url === state.url || !isWebUrl(url) || isRestrictedUrl(url)) return;
   state.url = url; ui.setUrl(url); pushRecent(url);
   if (!state.sync.navigation) return;
   const go = d => { d.url = url; d.status = 'loading'; ui.renderPanelState(d); if (d.render === 'iframe') ui.setFrameUrl(d, url); else send(d.tabId, 'Page.navigate', { url }).then(() => mark(d)).catch(() => {}); };
@@ -508,6 +512,7 @@ export function setViewport(inst, w, h, dpr) {
 }
 export async function navigateAll(url) {
   url = normalizeUrl(url); if (!url) return;
+  if (isRestrictedUrl(url)) { ui.toast(RESTRICTED_MSG); ui.setUrl(state.url); return; }
   state.url = url; ui.setUrl(url); pushRecent(url);
   const want = await renderModeFor(url);
   for (const d of state.devices) {
@@ -522,8 +527,9 @@ export function normalizeUrl(u) {
   if (!/^[a-z]+:\/\//i.test(u)) u = (/^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(u) ? 'http://' : 'https://') + u;
   return u;
 }
+export { pushRecent as rememberUrl };
 function pushRecent(url) {
-  if (!isWebUrl(url)) return;
+  if (!isWebUrl(url) || isRestrictedUrl(url)) return;
   chrome.storage.local.get('recentUrls').then(({ recentUrls = [] }) => {
     recentUrls = [url, ...recentUrls.filter(u => u !== url && isWebUrl(u))].slice(0, 20);
     chrome.storage.local.set({ recentUrls }); ui.renderRecent(recentUrls);

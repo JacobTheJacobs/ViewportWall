@@ -7,3 +7,4 @@ PRIVACY.md      export-ignore
 STORE-LISTING.md export-ignore
 .gitignore      export-ignore
 .gitattributes  export-ignore
+test/           export-ignore
