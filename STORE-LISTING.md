@@ -66,10 +66,19 @@ English (United States)
 | Field | File |
 | --- | --- |
 | Store icon 128x128 | docs/store-icon-128.png |
-| Screenshot 1280x800 | docs/store-all-screens.png |
-| Screenshot 1280x800 | docs/store-phones.png |
+| Screenshot 1 (1280x800) | docs/store-1-hero.png |
+| Screenshot 2 (1280x800) | docs/store-2-sync.png |
+| Screenshot 3 (1280x800) | docs/store-3-fold.png |
+| Screenshot 4 (1280x800) | docs/store-4-screens.png |
+| Screenshot 5 (1280x800) | docs/store-5-devices.png |
 | Small promo tile 440x280 | docs/promo-440x280.png |
 | Marquee promo tile 1400x560 | docs/promo-1400x560.png |
+
+Every image is a real capture of the extension running headless, composed with a
+headline. The site shown is Lumen, a fictional demo page in marketing/demo-site,
+so no third-party brand appears. Rebuild with:
+
+    python3 marketing/capture.py && python3 marketing/compose.py
 
 Screenshots and promo tiles are 24-bit PNG with no alpha channel, as required.
 

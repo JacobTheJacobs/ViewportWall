@@ -2,7 +2,7 @@
 
 Chrome extension: see one website on many viewports at once, with synchronized navigation and scroll.
 
-![The wall running react.dev on five phones](docs/wall.png)
+![Viewport Wall showing one site on a phone, foldable, tablet and laptop at once](docs/store-1-hero.png)
 
 ## Install
 
@@ -38,7 +38,9 @@ Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, i
 
 ## Features
 
-![Watch, phone, foldable, tablet, laptop, desktop and TV showing MDN at once](docs/store-all-screens.png)
+![Scrolling one device scrolls all of them](docs/store-2-sync.png)
+
+![Foldables open and closed side by side](docs/store-3-fold.png)
 
 - Wall: auto grid, horizontal, vertical, focus + comparisons; fit or fixed zoom; frames toggle; presentation mode; drag to reorder; double-click to focus one device.
 - Devices: 37 named presets + raw breakpoints, custom devices, favorites, saved sets, duplicate, rotate (one/all), pause, drag the right edge of a panel to resize its width live.

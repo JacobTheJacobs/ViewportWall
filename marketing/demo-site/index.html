@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen · Analytics that glow</title>
+<style>
+@font-face{font-family:Inter;src:url(/fonts/Inter.woff2) format("woff2");font-weight:100 900}
+*{box-sizing:border-box;margin:0}
+:root{--ink:#0f0a1e;--muted:#5b5572;--bg:#fffaf5}
+body{font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+nav{position:sticky;top:0;z-index:5;background:rgba(255,250,245,.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(15,10,30,.06)}
+nav .wrap{display:flex;align-items:center;gap:28px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.dot{width:28px;height:28px;border-radius:9px;background:conic-gradient(from 200deg,#ff5f6d,#ffc371,#7b61ff,#ff5f6d);box-shadow:0 6px 16px -6px #ff5f6d}
+.links{display:flex;gap:26px;font-weight:500;color:var(--muted);font-size:15px}
+.nav-cta{margin-left:auto;display:flex;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 20px;border-radius:12px;font-weight:650;font-size:15px}
+.btn.primary{background:var(--ink);color:#fff;box-shadow:0 10px 24px -10px rgba(15,10,30,.6)}
+.btn.ghost{border:1.5px solid rgba(15,10,30,.14)}
+.burger{display:none;width:40px;height:40px;border-radius:10px;border:1.5px solid rgba(15,10,30,.14);position:relative}
+.burger::before,.burger::after{content:"";position:absolute;left:10px;right:10px;height:2px;background:var(--ink);border-radius:2px}
+.burger::before{top:14px}.burger::after{top:22px}
+.hero{position:relative;overflow:hidden;padding:72px 0 40px}
+.hero::before{content:"";position:absolute;inset:-30% -10% auto -10%;height:120%;background:radial-gradient(40% 50% at 20% 30%,#ffb3a7 0,transparent 70%),radial-gradient(35% 45% at 80% 20%,#c9b8ff 0,transparent 70%),radial-gradient(30% 40% at 60% 70%,#ffe29a 0,transparent 70%);filter:blur(10px);z-index:-1}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border-radius:99px;background:#fff;box-shadow:0 4px 14px -6px rgba(15,10,30,.25);font-size:14px;font-weight:600}
+.pill b{background:linear-gradient(90deg,#ff5f6d,#7b61ff);color:#fff;border-radius:99px;padding:3px 10px;font-size:12px}
+h1{font-size:clamp(40px,7.2vw,84px);line-height:.98;letter-spacing:-.045em;font-weight:850;margin:22px 0 18px;max-width:900px}
+h1 em{font-style:normal;background:linear-gradient(90deg,#ff5f6d 0%,#ff9966 40%,#7b61ff 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:clamp(17px,2vw,21px);line-height:1.5;color:var(--muted);max-width:620px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin:30px 0 14px}
+.cta .btn{height:52px;padding:0 26px;font-size:16px;border-radius:14px}
+.fine{font-size:13.5px;color:var(--muted)}
+.board{margin-top:48px;border-radius:22px;background:#fff;box-shadow:0 40px 80px -30px rgba(60,30,120,.35),0 0 0 1px rgba(15,10,30,.06);padding:18px;display:grid;grid-template-columns:1.6fr 1fr;gap:16px}
+.card{border-radius:16px;padding:18px;background:#faf7ff}
+.card h4{font-size:13px;color:var(--muted);font-weight:600}
+.big{font-size:34px;font-weight:800;letter-spacing:-.03em;margin:6px 0 2px}
+.up{color:#0f9d58;font-weight:700;font-size:13px}
+.bars{display:flex;align-items:flex-end;gap:8px;height:150px;margin-top:14px}
+.bars i{flex:1;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#ff8a7a,#ff5f6d)}
+.bars i:nth-child(3n){background:linear-gradient(180deg,#b6a5ff,#7b61ff)}
+.bars i:nth-child(4n){background:linear-gradient(180deg,#ffd57a,#ffb13b)}
+.stack{display:grid;gap:16px}
+.ring{width:110px;height:110px;border-radius:50%;background:conic-gradient(#7b61ff 0 62%,#ffb13b 62% 84%,#ff5f6d 84% 100%);display:grid;place-items:center;margin:10px auto 4px}
+.ring::after{content:"62%";width:74px;height:74px;border-radius:50%;background:#faf7ff;display:grid;place-items:center;font-weight:800;font-size:20px}
+.logos{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;padding:46px 0 10px;color:#a39db5;font-weight:800;font-size:22px;letter-spacing:-.02em}
+section.feat{padding:60px 0}
+.feat h2{font-size:clamp(30px,4.4vw,48px);letter-spacing:-.035em;line-height:1.05;font-weight:800;max-width:720px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
+.f{background:#fff;border-radius:18px;padding:24px;box-shadow:0 0 0 1px rgba(15,10,30,.06),0 16px 30px -24px rgba(60,30,120,.4)}
+.ic{width:44px;height:44px;border-radius:12px;margin-bottom:16px}
+.f:nth-child(1) .ic{background:linear-gradient(135deg,#ff9a8b,#ff5f6d)}
+.f:nth-child(2) .ic{background:linear-gradient(135deg,#c3b5ff,#7b61ff)}
+.f:nth-child(3) .ic{background:linear-gradient(135deg,#ffe29a,#ffb13b)}
+.f h3{font-size:19px;letter-spacing:-.02em;margin-bottom:8px}
+.f p{color:var(--muted);line-height:1.5;font-size:15px}
+.band{margin:10px 20px 60px;border-radius:28px;padding:56px 28px;text-align:center;color:#fff;background:linear-gradient(120deg,#ff5f6d,#ff9966 45%,#7b61ff)}
+.band h2{font-size:clamp(28px,4vw,44px);letter-spacing:-.03em;font-weight:800;margin-bottom:18px}
+.band .btn{background:#fff;color:var(--ink);height:52px;padding:0 26px}
+@media (max-width:900px){
+  .links{display:none}.nav-cta .ghost{display:none}.burger{display:block}.nav-cta .primary{display:none}
+  .board{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.hero{padding-top:44px}
+  .logos{gap:24px;font-size:18px}
+}
+@media (min-width:600px) and (max-width:900px){.grid{grid-template-columns:1fr 1fr}.stack{grid-template-columns:1fr 1fr}}
+</style>
+<nav><div class="wrap">
+  <a class="brand" href="#"><span class="dot"></span>Lumen</a>
+  <div class="links"><a href="#">Product</a><a href="#">Pricing</a><a href="#">Customers</a><a href="#">Docs</a></div>
+  <div class="nav-cta"><a class="btn ghost" href="#">Sign in</a><a class="btn primary" href="#">Start free</a><span class="burger"></span></div>
+</div></nav>
+<header class="hero"><div class="wrap">
+  <span class="pill"><b>New</b>Realtime dashboards are here</span>
+  <h1>Analytics that <em>actually glow.</em></h1>
+  <p class="lead">Lumen turns raw events into dashboards your whole team understands, in minutes instead of sprints.</p>
+  <div class="cta"><a class="btn primary" href="#">Start for free</a><a class="btn ghost" href="#">Book a demo</a></div>
+  <p class="fine">Free for 14 days. No credit card.</p>
+  <div class="board">
+    <div class="card"><h4>Weekly active users</h4><div class="big">48,210</div><span class="up">▲ 18.4% vs last week</span>
+      <div class="bars"><i style="height:38%"></i><i style="height:52%"></i><i style="height:44%"></i><i style="height:66%"></i><i style="height:58%"></i><i style="height:74%"></i><i style="height:69%"></i><i style="height:88%"></i><i style="height:80%"></i><i style="height:96%"></i></div></div>
+    <div class="stack">
+      <div class="card"><h4>Conversion</h4><div class="ring"></div></div>
+      <div class="card"><h4>Revenue</h4><div class="big">$92.4k</div><span class="up">▲ 12.1%</span></div>
+    </div>
+  </div>
+</div></header>
+<div class="wrap logos"><span>Northwind</span><span>Kestrel</span><span>Orbitly</span><span>Vantage</span><span>Pinecone&nbsp;Co</span></div>
+<section class="feat"><div class="wrap">
+  <h2>Everything you need to see what is working.</h2>
+  <div class="grid">
+    <div class="f"><div class="ic"></div><h3>Live in seconds</h3><p>Drop in one snippet. Events stream into your dashboards before your coffee cools.</p></div>
+    <div class="f"><div class="ic"></div><h3>Answers, not charts</h3><p>Ask in plain words and get the chart, the trend and the reason behind it.</p></div>
+    <div class="f"><div class="ic"></div><h3>Shared by default</h3><p>Every dashboard is a link. Comment, pin and hand off without exporting a thing.</p></div>
+  </div>
+</div></section>
+<div class="band"><h2>Start glowing today.</h2><a class="btn" href="#">Create your free account</a></div>
+</html>
