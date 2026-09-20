@@ -90,6 +90,14 @@ async def screens(p):
     ctx, page = await open_wall(p, ['apple-watch-s10', 'iphone-17-pro', 'galaxy-z-fold', 'ipad-pro-11', 'macbook-air', 'tv-4k'], (1600, 1000), zoom='fit')
     await shot(page, 'screens'); await ctx.close()
 
+@register
+async def agent(p):
+    ctx, page = await open_wall(p, ['iphone-17-pro', 'ipad-pro-11', 'macbook-air'], (1600, 1000))
+    await page.click('#settingsBtn'); await page.wait_for_timeout(400)
+    await page.click('#settingsPop [data-more=agent]'); await page.wait_for_timeout(900)
+    await page.mouse.move(5, 5)
+    await shot(page, 'agent'); await ctx.close()
+
 async def main():
     serve()
     names = sys.argv[1:] or list(SHOTS)

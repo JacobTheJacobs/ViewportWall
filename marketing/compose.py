@@ -71,6 +71,7 @@ async def main():
     hero, _ = crop('hero', (0, 0, 3920, 1870))
     sync, _ = crop('sync', (0, 0, 3200, 1830))
     devices, _ = crop('devices', (700, 120, 2500, 1840))
+    agentImg, _ = crop('agent', (1040, 340, 2180, 1860))
     fold, _ = crop('fold', (0, 0, 2690, 1830))
     screens, _ = crop('screens', (250, 150, 2950, 1840))
     async with async_playwright() as p:
@@ -80,12 +81,14 @@ async def main():
             'See your site on phones, foldables, tablets and laptops at the same time.', 'Live, not screenshots', width=1180), 1280, 800, 'store-1-hero.png')
         await render(pg, stack(sync, 'Scroll one. <em>They all follow.</em>',
             'Navigation, scrolling, clicks and typing stay in sync across every device.', 'Sync on', width=1100), 1280, 800, 'store-2-sync.png')
+        await render(pg, split(agentImg, 'Your AI agent <em>checks it too.</em>',
+            'Connect Claude Code, Cursor or any MCP client. It loads every viewport, reports what breaks and sends back screenshots.', 'Works with your agent', img_w=520, img_left=680, img_top=54), 1280, 800, 'store-3-agent.png')
         await render(pg, split(fold, 'Foldables, <em>open and closed.</em>',
-            'Galaxy Z Fold, Z Flip, Pixel Fold and Razr. Both screens, same page, side by side.', 'Fold in place', img_w=700, img_left=545, img_top=162), 1280, 800, 'store-3-fold.png')
+            'Galaxy Z Fold, Z Flip, Pixel Fold and Razr. Both screens, same page, side by side.', 'Fold in place', img_w=700, img_left=545, img_top=162), 1280, 800, 'store-4-fold.png')
         await render(pg, stack(screens, 'From watch <em>to 4K TV.</em>',
-            '57 device profiles with real viewport size, pixel density and touch.', 'Phones · Tablets · PCs · Watches · TVs', width=1060), 1280, 800, 'store-4-screens.png')
+            '57 device profiles with real viewport size, pixel density and touch.', 'Phones · Tablets · PCs · Watches · TVs', width=1060), 1280, 800, 'store-5-screens.png')
         await render(pg, split(devices, 'Add any device <em>in two clicks.</em>',
-            'Pick from the library, apply a whole set, or save your own custom size.', 'Device library', img_w=610, img_left=610, img_top=108), 1280, 800, 'store-5-devices.png')
+            'Pick from the library, apply a whole set, or save your own custom size.', 'Device library', img_w=610, img_left=610, img_top=108), 1280, 800, 'store-extra-devices.png')
         # promo tiles
         marquee = f'''<style>{BASE_CSS}
 .copy{{position:absolute;left:70px;top:0;bottom:0;width:560px;display:flex;flex-direction:column;justify-content:center;gap:18px}}

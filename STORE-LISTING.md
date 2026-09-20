@@ -7,10 +7,9 @@ privacy policy URL once you have published PRIVACY.md.
 
 Viewport Wall
 
-## Short description (132 characters max, currently 118)
+## Short description (132 characters max, currently 131)
 
-See one website on many device screens at once, with navigation, scrolling and
-clicks synchronised across every device.
+See your site on every screen at once: phones, foldables, tablets, TVs. Synced scroll and clicks, plus an MCP server for AI agents.
 
 ## Detailed description
 
@@ -40,6 +39,18 @@ FEATURES
   notes.
 - Dark and light themes.
 
+FOR AI AGENTS
+
+Viewport Wall has a companion that hands the same device library to an AI agent:
+viewport-wall-mcp. Point Claude Code, Claude Desktop, Cursor, Windsurf, Zed or
+any MCP client at it and ask "check localhost:3000 for responsive issues". It
+loads the page at every viewport, reports what breaks and which element caused
+it, finds the page's real breakpoints, and sends back screenshots when asked.
+
+It is a single file with no dependencies that drives the Chrome you already
+have, so there is no server, no account and nothing to keep running. Settings ->
+Connect your AI agent gives you the two lines you need.
+
 A NOTE ON THE YELLOW BANNER
 
 Chrome shows a "Viewport Wall started debugging this browser" banner while the
@@ -68,11 +79,14 @@ English (United States)
 | Store icon 128x128 | docs/store-icon-128.png |
 | Screenshot 1 (1280x800) | docs/store-1-hero.png |
 | Screenshot 2 (1280x800) | docs/store-2-sync.png |
-| Screenshot 3 (1280x800) | docs/store-3-fold.png |
-| Screenshot 4 (1280x800) | docs/store-4-screens.png |
-| Screenshot 5 (1280x800) | docs/store-5-devices.png |
+| Screenshot 3 (1280x800) | docs/store-3-agent.png |
+| Screenshot 4 (1280x800) | docs/store-4-fold.png |
+| Screenshot 5 (1280x800) | docs/store-5-screens.png |
 | Small promo tile 440x280 | docs/promo-440x280.png |
 | Marquee promo tile 1400x560 | docs/promo-1400x560.png |
+
+docs/store-extra-devices.png (the Add Device library) is a spare if you prefer it
+over one of the five.
 
 Every image is a real capture of the extension running headless, composed with a
 headline. The site shown is Lumen, a fictional demo page in marketing/demo-site,

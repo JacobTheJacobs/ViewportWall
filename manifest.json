@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Viewport Wall",
-  "version": "1.1.1",
-  "description": "See your website on every screen at once. Multi-device responsive testing wall with synchronized navigation and scroll.",
+  "version": "1.1.2",
+  "description": "See your site on every screen at once: phones, foldables, tablets, TVs. Synced scroll and clicks, plus an MCP server for AI agents.",
   "minimum_chrome_version": "116",
   "permissions": [
     "debugger",

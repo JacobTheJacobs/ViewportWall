@@ -49,7 +49,9 @@ Realistic frames are data-driven (`frames.js`): iPhone modern (Dynamic Island, i
 
 ![Scrolling one device scrolls all of them](docs/store-2-sync.png)
 
-![Foldables open and closed side by side](docs/store-3-fold.png)
+![An AI agent connected over MCP](docs/store-3-agent.png)
+
+![Foldables open and closed side by side](docs/store-4-fold.png)
 
 - Wall: auto grid, horizontal, vertical, focus + comparisons; fit or fixed zoom; frames toggle; presentation mode; drag to reorder; double-click to focus one device.
 - Devices: 37 named presets + raw breakpoints, custom devices, favorites, saved sets, duplicate, rotate (one/all), pause, drag the right edge of a panel to resize its width live.
