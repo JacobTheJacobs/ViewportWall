@@ -89,12 +89,15 @@
       <p>Viewport Wall has a companion that gives an AI agent the same devices: <b>viewport-wall-mcp</b>. The agent
       loads a page at every viewport, reports what breaks and can send back screenshots. It drives the Chrome you
       already have, so there is nothing to install or keep running.</p>
-      <p class="muted">Add this to your agent's MCP configuration. Claude Code, Claude Desktop, Cursor, Windsurf, Zed and Cline all read this shape.</p>
+      <p class="muted"><b>1.</b> Save the companion. It is one file, needs Node 22 or newer, and installs nothing.</p>
+      <pre id="agentGet" class="code"></pre>
+      <p class="muted"><b>2.</b> Add this to your agent's MCP configuration. Claude Code, Claude Desktop, Cursor, Windsurf, Zed and Cline all read this shape.</p>
       <pre id="agentCfg" class="code"></pre>
       <div class="sheet-actions">
+        <button class="btn primary" data-agent="copyGet">Copy download</button>
         <button class="btn primary" data-agent="copy">Copy configuration</button>
         <button class="btn" data-agent="copyCli">Copy Claude Code command</button>
-        <a class="btn" href="https://www.npmjs.com/package/viewport-wall-mcp" target="_blank" rel="noopener">What it can do</a>
+        <a class="btn" href="https://github.com/JacobTheJacobs/ViewportWall/tree/master/mcp" target="_blank" rel="noopener">What it can do</a>
       </div>
       <p class="muted">Then ask your agent: “check localhost:3000 for responsive issues on phones and tablets”.</p>
     </div>

@@ -9,7 +9,7 @@ Chrome extension: see one website on many viewports at once, with synchronized n
 | | For | Install |
 | --- | --- | --- |
 | **Viewport Wall** (this extension) | A person looking at devices | [Chrome Web Store](https://chromewebstore.google.com/detail/viewport-wall/famamjgffefkajiifeigbfgmmbgnkdmn) |
-| **viewport-wall-mcp** ([mcp/](mcp/)) | An AI agent checking pages | one line of MCP config, see below |
+| **viewport-wall-mcp** ([mcp/](mcp/)) | An AI agent checking pages | one file, no package manager, see below |
 
 Both read the same device library, so the agent tests exactly what you see.
 
@@ -80,16 +80,21 @@ What this says: a still wall costs nothing in either mode (no frames are sent). 
 
 ## Connect an AI agent
 
-`mcp/` is a companion package that gives an agent the same devices: it loads a page at every viewport, reports
-what breaks with the element that caused it, finds the real breakpoints, and returns screenshots on request.
-It drives the Chrome already on the machine, so there is no server, no browser download and no API key.
+`mcp/` is a companion that gives an agent the same devices: it loads a page at every viewport, reports what
+breaks with the element that caused it, finds the real breakpoints, and returns screenshots on request. It has
+no dependencies and drives the Chrome already on the machine, so there is no server, no npm install and no
+browser download. Node 22 or newer.
 
-```json
-{ "mcpServers": { "viewport-wall": { "command": "npx", "args": ["-y", "viewport-wall-mcp"] } } }
+```bash
+curl -fsSL https://raw.githubusercontent.com/JacobTheJacobs/ViewportWall/master/mcp/dist/viewport-wall-mcp.mjs -o ~/.local/bin/viewport-wall-mcp.mjs
 ```
 
-In the extension: Settings → **Connect your AI agent** copies that block, or the `claude mcp add` command.
-Details and the CLI form are in [mcp/README.md](mcp/README.md).
+```json
+{ "mcpServers": { "viewport-wall": { "command": "node", "args": ["/home/you/.local/bin/viewport-wall-mcp.mjs"] } } }
+```
+
+In the extension: Settings → **Connect your AI agent** copies both snippets. Details, the CLI form, and how to
+audit pages behind a login are in [mcp/README.md](mcp/README.md).
 
 ## Shortcuts
 

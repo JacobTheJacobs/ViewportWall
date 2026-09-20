@@ -1,19 +1,35 @@
 {
   "name": "viewport-wall-mcp",
   "version": "1.0.0",
-  "description": "Let an AI agent check any page for responsive layout bugs across 57 real device viewports. MCP server and CLI, no setup beyond your installed Chrome.",
-  "keywords": ["mcp", "model-context-protocol", "responsive", "testing", "viewport", "devices", "chrome", "agent", "accessibility"],
+  "description": "Let an AI agent check any page for responsive layout bugs across 57 real device viewports. MCP server and CLI, zero dependencies, drives the Chrome you already have.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "responsive",
+    "testing",
+    "viewport",
+    "devices",
+    "chrome",
+    "agent",
+    "accessibility"
+  ],
   "license": "MIT",
   "type": "module",
-  "bin": { "viewport-wall-mcp": "src/index.mjs" },
-  "files": ["src", "README.md"],
-  "engines": { "node": ">=18" },
+  "bin": {
+    "viewport-wall-mcp": "src/index.mjs"
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "sync": "node sync-devices.mjs",
+    "build": "node build.mjs",
     "test": "node test/run.mjs"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "puppeteer-core": "^25.11.0"
-  }
+  "dependencies": {}
 }

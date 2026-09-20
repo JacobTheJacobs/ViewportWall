@@ -320,15 +320,20 @@ $('#settingsPop').addEventListener('click', async e => {
   else if (k === 'about') $('#onboard').hidden = false;
   else if (k === 'agent') openAgentDialog();
 });
-// The MCP companion: the same device library, driven by an agent instead of a person.
-const MCP_CONFIG = JSON.stringify({ mcpServers: { 'viewport-wall': { command: 'npx', args: ['-y', 'viewport-wall-mcp'] } } }, null, 2);
-const MCP_CLI = 'claude mcp add viewport-wall -- npx -y viewport-wall-mcp';
-function openAgentDialog() { $('#agentCfg').textContent = MCP_CONFIG; $('#agentDlg').hidden = false; }
+// The MCP companion: the same device library, driven by an agent instead of a person. It is a single file with no
+// dependencies, so connecting an agent needs no package manager and no server.
+const MCP_FILE = '~/.local/bin/viewport-wall-mcp.mjs';
+const MCP_GET = 'mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/JacobTheJacobs/ViewportWall/master/mcp/dist/viewport-wall-mcp.mjs -o ' + MCP_FILE;
+const MCP_CONFIG = JSON.stringify({ mcpServers: { 'viewport-wall': { command: 'node', args: [MCP_FILE.replace('~', '$HOME')] } } }, null, 2);
+const MCP_CLI = `claude mcp add viewport-wall -- node ${MCP_FILE.replace('~', '$HOME')}`;
+const AGENT_TEXT = { copyGet: [MCP_GET, 'Download command copied'], copy: [MCP_CONFIG, 'Configuration copied'], copyCli: [MCP_CLI, 'Command copied'] };
+function openAgentDialog() { $('#agentGet').textContent = MCP_GET; $('#agentCfg').textContent = MCP_CONFIG; $('#agentDlg').hidden = false; }
 $('#agentDlg').addEventListener('click', async e => {
   const k = e.target.closest('[data-agent]')?.dataset.agent;
   if (!k && e.target !== $('#agentDlg')) return;
-  if (k === 'copy' || k === 'copyCli') {
-    try { await navigator.clipboard.writeText(k === 'copy' ? MCP_CONFIG : MCP_CLI); toast(k === 'copy' ? 'Configuration copied' : 'Command copied'); } catch { toast('Copy failed'); }
+  if (AGENT_TEXT[k]) {
+    const [text, msg] = AGENT_TEXT[k];
+    try { await navigator.clipboard.writeText(text); toast(msg); } catch { toast('Copy failed'); }
     return;
   }
   $('#agentDlg').hidden = true;

@@ -1,7 +1,7 @@
 // The actual work: emulate a device, load a page, run the checks, take pictures.
 import { DEVICES, SETS, UA, QUICK_WIDTHS } from './devices.js';
 import { CHECKS, DEFAULT_OPTS, SIGNATURE, DECLARED } from './checks.mjs';
-import { getBrowser } from './browser.mjs';
+import { Page } from './cdp.mjs';
 
 export const allDevices = () => DEVICES;
 export const findDevice = id => DEVICES.find(d => d.id === id) || DEVICES.find(d => d.name.toLowerCase() === String(id).toLowerCase());
@@ -29,19 +29,17 @@ export function resolveDevices(list) {
 const uaFor = d => d.mobile ? (UA[d.os] || UA.mobile) : undefined;
 
 async function withPage(device, fn, { mobileUA = false } = {}) {
-  const browser = await getBrowser();
-  const page = await browser.newPage();
+  const page = await Page.open();
   try {
-    await page.setViewport({ width: device.width, height: device.height, deviceScaleFactor: device.dpr || 1, isMobile: !!device.mobile, hasTouch: !!device.touch });
+    await page.setViewport({ width: device.width, height: device.height, dpr: device.dpr || 1, mobile: !!device.mobile, touch: !!device.touch });
     if (mobileUA && uaFor(device)) await page.setUserAgent(uaFor(device));
     return await fn(page);
   } finally { await page.close().catch(() => {}); }
 }
 
-async function load(page, url, { waitUntil = 'networkidle2', timeout = 30000, settle = 400 } = {}) {
-  const res = await page.goto(url, { waitUntil, timeout }).catch(e => { throw new Error(`Could not load ${url}: ${e.message}`); });
-  if (settle) await new Promise(r => setTimeout(r, settle));
-  return { status: res?.status() ?? null };
+async function load(page, url, opts = {}) {
+  await page.goto(url, opts).catch(e => { throw new Error(`Could not load ${url}: ${e.message}`); });
+  return { status: null };
 }
 
 export async function auditDevice(url, device, opts = {}) {
@@ -50,7 +48,7 @@ export async function auditDevice(url, device, opts = {}) {
     const { status } = await load(page, url, opts);
     const result = await page.evaluate(`${CHECKS}(${JSON.stringify(checkOpts)})`);
     const out = { device: { id: device.id, name: device.name, width: device.width, height: device.height, dpr: device.dpr || 1, mobile: !!device.mobile }, status, ...result };
-    if (opts.screenshot) out.screenshot = await page.screenshot({ type: 'jpeg', quality: 70, fullPage: !!opts.fullPage, encoding: 'base64' });
+    if (opts.screenshot) out.screenshot = await page.screenshot({ format: 'jpeg', quality: 70, fullPage: !!opts.fullPage });
     return out;
   }, opts);
 }
@@ -73,23 +71,22 @@ export async function audit(url, devices, opts = {}) {
 export async function shoot(url, device, opts = {}) {
   return withPage(device, async page => {
     await load(page, url, opts);
-    const data = await page.screenshot({ type: opts.format === 'png' ? 'png' : 'jpeg', quality: opts.format === 'png' ? undefined : (opts.quality || 75), fullPage: !!opts.fullPage, encoding: 'base64' });
+    const data = await page.screenshot({ format: opts.format === 'png' ? 'png' : 'jpeg', quality: opts.quality || 75, fullPage: !!opts.fullPage });
     return { device, data, mimeType: opts.format === 'png' ? 'image/png' : 'image/jpeg' };
   }, opts);
 }
 
 // Two answers: what the stylesheets declare, and what the layout actually does when swept.
 export async function breakpoints(url, { min = 320, max = 1600, step = 16, ...opts } = {}) {
-  const browser = await getBrowser();
-  const page = await browser.newPage();
+  const page = await Page.open();
   try {
-    await page.setViewport({ width: max, height: 900, deviceScaleFactor: 1 });
+    await page.setViewport({ width: max, height: 900 });
     await load(page, url, opts);
     const declared = await page.evaluate(`${DECLARED}()`);
     const inRange = declared.widths.filter(w => w >= min && w <= max);
 
     const sigAt = async w => {
-      await page.setViewport({ width: w, height: w < 700 ? 800 : 900, deviceScaleFactor: 1, isMobile: w < 1024, hasTouch: w < 1024 });
+      await page.setViewport({ width: w, height: w < 700 ? 800 : 900, mobile: w < 1024, touch: w < 1024 });
       await new Promise(r => setTimeout(r, 110));
       return (await page.evaluate(`${SIGNATURE}()`)).hash;
     };

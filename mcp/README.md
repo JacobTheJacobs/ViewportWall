@@ -9,20 +9,38 @@ the Chrome extension that shows the same devices to a human.
 
 ## Connect an agent
 
-Add this to your MCP client's config. Nothing is installed up front: `npx` fetches the package the first time
-the agent calls a tool, and the client starts and stops it.
+No package manager, no registry, no server. The whole thing is one file that needs Node 22 or newer and the
+Chrome you already have.
+
+```bash
+mkdir -p ~/.local/bin
+curl -fsSL https://raw.githubusercontent.com/JacobTheJacobs/ViewportWall/master/mcp/dist/viewport-wall-mcp.mjs -o ~/.local/bin/viewport-wall-mcp.mjs
+```
+
+Then point your agent at it:
 
 ```json
 {
   "mcpServers": {
-    "viewport-wall": { "command": "npx", "args": ["-y", "viewport-wall-mcp"] }
+    "viewport-wall": { "command": "node", "args": ["/home/you/.local/bin/viewport-wall-mcp.mjs"] }
   }
 }
 ```
 
-- **Claude Code**: `claude mcp add viewport-wall -- npx -y viewport-wall-mcp`
-- **Claude Desktop**: Settings → Developer → Edit Config, then paste the block above.
+- **Claude Code**: `claude mcp add viewport-wall -- node ~/.local/bin/viewport-wall-mcp.mjs`
+- **Claude Desktop**: Settings → Developer → Edit Config, then paste the block above with an absolute path.
 - **Cursor, Windsurf, Zed, Cline**: same block in their MCP settings file.
+
+The Viewport Wall extension has the same two snippets under Settings → Connect your AI agent, with a copy button.
+
+### Other ways to run it
+
+```bash
+git clone https://github.com/JacobTheJacobs/ViewportWall && node ViewportWall/mcp/src/index.mjs   # from a checkout
+npx -y viewport-wall-mcp                                                                          # if published to npm
+```
+
+Both are the same code: `dist/viewport-wall-mcp.mjs` is `src/` inlined into one file by `node build.mjs`.
 
 ## Tools
 
@@ -53,11 +71,11 @@ Rules catch structural breakage, not taste. For "does this look right", ask for 
 The same engine without MCP, for agents that can only run shell commands, and for CI.
 
 ```bash
-npx viewport-wall-mcp audit https://example.com --devices popular-mobile,1440
-npx viewport-wall-mcp audit https://example.com --json          # machine readable, exits 1 if anything is broken
-npx viewport-wall-mcp shot https://example.com --devices iphone-17-pro --out ./shots --full-page
-npx viewport-wall-mcp breakpoints https://example.com
-npx viewport-wall-mcp devices pixel
+node viewport-wall-mcp.mjs audit https://example.com --devices popular-mobile,1440
+node viewport-wall-mcp.mjs audit https://example.com --json     # machine readable, exits 1 if anything is broken
+node viewport-wall-mcp.mjs shot https://example.com --devices iphone-17-pro --out ./shots --full-page
+node viewport-wall-mcp.mjs breakpoints https://example.com
+node viewport-wall-mcp.mjs devices pixel
 ```
 
 ## Pages behind a login, and localhost
@@ -66,11 +84,11 @@ Both work, because the browser is yours.
 
 ```bash
 # reuse a Chrome profile, so whatever that profile is logged into stays logged in
-npx viewport-wall-mcp audit https://app.internal/dashboard --profile ~/.config/viewport-wall
+node viewport-wall-mcp.mjs audit https://app.internal/dashboard --profile ~/.config/viewport-wall
 
 # or attach to a Chrome you already started
 google-chrome --remote-debugging-port=9222
-npx viewport-wall-mcp audit http://localhost:3000 --connect http://127.0.0.1:9222
+node viewport-wall-mcp.mjs audit http://localhost:3000 --connect http://127.0.0.1:9222
 ```
 
 In MCP config, the same two options are the env vars `VIEWPORT_WALL_PROFILE` and `VIEWPORT_WALL_CONNECT`.
@@ -84,7 +102,8 @@ and TVs, each with its real viewport size, pixel density and touch flag. Sets li
 
 ## Requirements
 
-Node 18 or newer, and Google Chrome, Chromium or Edge installed. Nothing else.
+Node 22 or newer, and Google Chrome, Chromium or Edge installed. Nothing else: no npm install, no dependencies,
+no browser download. Node 22 is the floor because the server talks to Chrome over Node's built-in WebSocket.
 
 ## Licence
 

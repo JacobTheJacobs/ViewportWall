@@ -7,7 +7,10 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const ENTRY = path.join(here, '..', 'src', 'index.mjs');
+// Run against the source by default, or the single-file build: node test/run.mjs dist
+const target = process.argv[2] === 'dist' ? ['dist', 'viewport-wall-mcp.mjs'] : ['src', 'index.mjs'];
+const ENTRY = path.join(here, '..', ...target);
+console.log('testing', target.join('/'));
 let failed = [];
 const ok = (name, cond, detail) => { console.log((cond ? 'PASS ' : 'FAIL ') + name + (cond || detail === undefined ? '' : ` — ${detail}`)); if (!cond) failed.push(name); };
 

@@ -2,15 +2,12 @@
 // viewport-wall-mcp: an MCP server (default) and a CLI over the same engine.
 //   MCP:  viewport-wall-mcp
 //   CLI:  viewport-wall-mcp audit https://example.com --devices popular-mobile,1440
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { readFileSync } from 'node:fs';
-import { audit, shoot, breakpoints, resolveDevices, allDevices, findDevice, commonWidths } from './audit.mjs';
+import { serve } from './rpc.mjs';
+import { audit, shoot, breakpoints, resolveDevices, allDevices, commonWidths } from './audit.mjs';
 import { SETS } from './devices.js';
-import { configure, closeBrowser } from './browser.mjs';
+import { configure, closeBrowser } from './cdp.mjs';
 
-const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+const VERSION = '1.0.0';
 const DEFAULT_DEVICES = ['iphone-se', 'iphone-17-pro', 'pixel-10', 'ipad-pro-11', 'laptop-1366', 'desktop-1920'];
 
 // ---------- shared formatting ----------
@@ -142,15 +139,7 @@ async function runTool(name, a = {}) {
   throw new Error(`Unknown tool: ${name}`);
 }
 
-async function serve() {
-  const server = new Server({ name: 'viewport-wall', version: VERSION }, { capabilities: { tools: {} } });
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
-  server.setRequestHandler(CallToolRequestSchema, async req => {
-    try { return await runTool(req.params.name, req.params.arguments || {}); }
-    catch (e) { return { isError: true, content: [{ type: 'text', text: String(e.message || e) }] }; }
-  });
-  await server.connect(new StdioServerTransport());
-}
+function startServer() { serve({ name: 'viewport-wall', version: VERSION, tools: TOOLS, call: runTool }); }
 
 // ---------- CLI ----------
 const HELP = `viewport-wall-mcp ${VERSION}
@@ -224,7 +213,7 @@ async function cli(argv) {
 const args = process.argv.slice(2);
 if (args.length === 0) {
   configure({ chromePath: process.env.CHROME_PATH, profile: process.env.VIEWPORT_WALL_PROFILE, connect: process.env.VIEWPORT_WALL_CONNECT });
-  serve().catch(e => { console.error(e); process.exit(1); });
+  startServer();
 } else {
   cli(args).then(async code => { await closeBrowser(); process.exit(code); }, async e => { console.error(String(e.message || e)); await closeBrowser(); process.exit(1); });
 }
