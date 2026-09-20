@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clean responsive page</title>
+<style>body{font:16px/1.5 system-ui;margin:0;padding:16px;max-width:1100px}img{max-width:100%}
+ .cards{display:grid;gap:16px;grid-template-columns:1fr}
+ a.btn{display:inline-block;min-width:48px;min-height:48px;line-height:48px;padding:0 16px;background:#123;color:#fff;text-decoration:none;border-radius:8px}
+ @media(min-width:700px){.cards{grid-template-columns:1fr 1fr}}
+ @media(min-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}}</style>
+<h1>Clean page</h1><p>Nothing here should be flagged.</p>
+<div class="cards"><div>One</div><div>Two</div><div>Three</div></div>
+<p><a class="btn" href="#">Big enough tap target</a></p>

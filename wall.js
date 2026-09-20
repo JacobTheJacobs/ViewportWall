@@ -318,6 +318,20 @@ $('#settingsPop').addEventListener('click', async e => {
   const k = e.target.closest('[data-more]')?.dataset.more; if (!k) return; hidePops();
   if (k === 'report') { try { await navigator.clipboard.writeText(C.buildReport()); toast('Report copied to clipboard'); } catch { toast('Copy failed'); } }
   else if (k === 'about') $('#onboard').hidden = false;
+  else if (k === 'agent') openAgentDialog();
+});
+// The MCP companion: the same device library, driven by an agent instead of a person.
+const MCP_CONFIG = JSON.stringify({ mcpServers: { 'viewport-wall': { command: 'npx', args: ['-y', 'viewport-wall-mcp'] } } }, null, 2);
+const MCP_CLI = 'claude mcp add viewport-wall -- npx -y viewport-wall-mcp';
+function openAgentDialog() { $('#agentCfg').textContent = MCP_CONFIG; $('#agentDlg').hidden = false; }
+$('#agentDlg').addEventListener('click', async e => {
+  const k = e.target.closest('[data-agent]')?.dataset.agent;
+  if (!k && e.target !== $('#agentDlg')) return;
+  if (k === 'copy' || k === 'copyCli') {
+    try { await navigator.clipboard.writeText(k === 'copy' ? MCP_CONFIG : MCP_CLI); toast(k === 'copy' ? 'Configuration copied' : 'Command copied'); } catch { toast('Copy failed'); }
+    return;
+  }
+  $('#agentDlg').hidden = true;
 });
 $('#viewPop').addEventListener('click', e => {
   const k = e.target.closest('[data-view]')?.dataset.view; if (!k) return; hidePops();

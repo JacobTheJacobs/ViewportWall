@@ -78,8 +78,27 @@
   <label class="row-toggle" data-tip="Send an iPhone/Android user agent. Off by default: sites like LinkedIn bind sessions to the user agent and may log you out."><span>Mobile user agent</span><input type="checkbox" id="mobileUA"><i></i></label>
   <div class="menu-row"><span>Auto reload</span><select id="auto"><option value="0">Off</option><option value="5">5s</option><option value="15">15s</option><option value="60">60s</option></select></div>
   <div class="menu-sep"></div>
+  <button data-more="agent">Connect your AI agent…</button>
   <button data-more="report">Copy QA report</button>
   <button data-more="about">About &amp; privacy</button>
+</div>
+<div id="agentDlg" class="modal" hidden>
+  <div class="sheet">
+    <div class="sheet-head"><h2>Connect your AI agent</h2><button class="icon-btn" data-agent="close" aria-label="Close">&times;</button></div>
+    <div class="sheet-body">
+      <p>Viewport Wall has a companion that gives an AI agent the same devices: <b>viewport-wall-mcp</b>. The agent
+      loads a page at every viewport, reports what breaks and can send back screenshots. It drives the Chrome you
+      already have, so there is nothing to install or keep running.</p>
+      <p class="muted">Add this to your agent's MCP configuration. Claude Code, Claude Desktop, Cursor, Windsurf, Zed and Cline all read this shape.</p>
+      <pre id="agentCfg" class="code"></pre>
+      <div class="sheet-actions">
+        <button class="btn primary" data-agent="copy">Copy configuration</button>
+        <button class="btn" data-agent="copyCli">Copy Claude Code command</button>
+        <a class="btn" href="https://www.npmjs.com/package/viewport-wall-mcp" target="_blank" rel="noopener">What it can do</a>
+      </div>
+      <p class="muted">Then ask your agent: “check localhost:3000 for responsive issues on phones and tablets”.</p>
+    </div>
+  </div>
 </div>
 <div id="devicesPop" class="pop wide" hidden>
   <div class="pop-title">Devices <span class="muted" id="devCount"></span></div>

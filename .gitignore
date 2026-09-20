@@ -2,3 +2,5 @@ node_modules/
 *.png
 !icons/*.png
 !docs/*.png
+mcp/node_modules/
+mcp/package-lock.json

@@ -322,6 +322,13 @@ button{cursor:pointer}
 .sheet{width:min(540px,92vw);background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);padding:26px 30px;margin-top:10vh}
 .sheet h2{margin:0 0 8px;font-size:20px;letter-spacing:-.01em}
 .sheet p{margin:8px 0;line-height:1.55;color:var(--text-secondary)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sheet-head h2{margin:0}
+.sheet-body{margin-top:6px}
+.sheet .code{margin:14px 0;padding:14px 16px;border-radius:var(--r-md);background:var(--bg-input);border:1px solid var(--border-subtle);
+  font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text-primary);white-space:pre;overflow-x:auto}
+.sheet-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 4px;align-items:center}
+.sheet-actions .btn{height:38px;padding:0 16px;text-decoration:none}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 .row.end{justify-content:flex-end;margin-top:12px}
 .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-secondary);text-align:center}

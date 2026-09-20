@@ -4,6 +4,15 @@ Chrome extension: see one website on many viewports at once, with synchronized n
 
 ![Viewport Wall showing one site on a phone, foldable, tablet and laptop at once](docs/store-1-hero.png)
 
+## Two halves
+
+| | For | Install |
+| --- | --- | --- |
+| **Viewport Wall** (this extension) | A person looking at devices | [Chrome Web Store](https://chromewebstore.google.com/detail/viewport-wall/famamjgffefkajiifeigbfgmmbgnkdmn) |
+| **viewport-wall-mcp** ([mcp/](mcp/)) | An AI agent checking pages | one line of MCP config, see below |
+
+Both read the same device library, so the agent tests exactly what you see.
+
 ## Install
 
 **[Add to Chrome from the Chrome Web Store](https://chromewebstore.google.com/detail/viewport-wall/famamjgffefkajiifeigbfgmmbgnkdmn)**
@@ -68,6 +77,19 @@ Headless Chromium 151 on a 24-core Linux box, `bench2.py` in the test harness. C
 | 12 | Interactive (iframe) | 1% / 30% | 21% / 35% | 1.16 / 1.21 GB | native | 0.3 s |
 
 What this says: a still wall costs nothing in either mode (no frames are sent). Scrolling on the active device streams real frames to every panel, so a 12-device scroll costs about one core. Each emulated tab costs roughly 130 MB and, on a page that animates continuously, most of the cost is the renderers themselves (about 20% of a core each), so an animated 12-device wall is heavy; the Snapshots pause in Settings or Interactive mode for local work brings it down. Real sites (YouTube watch page, react.dev, nextjs.org, github.com, threejs.org, MDN, Wikipedia) render and scroll in sync on four devices in the `sites.py` check.
+
+## Connect an AI agent
+
+`mcp/` is a companion package that gives an agent the same devices: it loads a page at every viewport, reports
+what breaks with the element that caused it, finds the real breakpoints, and returns screenshots on request.
+It drives the Chrome already on the machine, so there is no server, no browser download and no API key.
+
+```json
+{ "mcpServers": { "viewport-wall": { "command": "npx", "args": ["-y", "viewport-wall-mcp"] } } }
+```
+
+In the extension: Settings → **Connect your AI agent** copies that block, or the `claude mcp add` command.
+Details and the CLI form are in [mcp/README.md](mcp/README.md).
 
 ## Shortcuts
 

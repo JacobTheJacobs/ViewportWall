@@ -9,3 +9,4 @@ STORE-LISTING.md export-ignore
 .gitattributes  export-ignore
 test/           export-ignore
 marketing/      export-ignore
+mcp/            export-ignore

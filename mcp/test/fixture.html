@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>Broken layout fixture</title>
+<!-- deliberately no viewport meta -->
+<style>
+ body{font-family:system-ui;margin:0}
+ .wide{width:1200px;background:#fdd;padding:20px}
+ .nowrap{width:150px;overflow:hidden;white-space:nowrap;background:#ddf}
+ .tiny{font-size:9px}
+ .smallbtn{width:20px;height:20px;padding:0;font-size:8px}
+ .bar{position:fixed;top:0;left:0;width:1400px;height:32px;background:#333;color:#fff}
+ @media (min-width:900px){.wide{width:auto}}
+</style>
+<div class="bar">fixed bar wider than phones</div>
+<div style="height:40px"></div>
+<div class="wide">A block fixed at 1200px wide, so narrow viewports scroll sideways.</div>
+<p class="nowrap">This single line of text is far too long for its own box and gets clipped.</p>
+<p class="tiny">Nine pixel text that nobody can read comfortably on a phone screen at arm's length.</p>
+<button class="smallbtn">x</button>
+<a href="#" class="smallbtn" style="display:inline-block">y</a>
+<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1100' height='80'%3E%3Crect width='1100' height='80' fill='%23cfc'/%3E%3C/svg%3E" alt="oversized banner">
+<p style="padding:12px">Normal paragraph that should not be flagged at any width.</p>
